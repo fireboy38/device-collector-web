@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTheme } from 'next-themes';
 import { useAuthStore } from '@/store/auth';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -19,7 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -29,6 +30,7 @@ import { toast } from 'sonner';
 import {
   LayoutDashboard, FolderKanban, Users, Building2, Monitor, Globe, FileText, KeyRound,
   LogOut, Loader2, Sun, Moon, ChevronDown, Bell, Zap, Settings, Menu, Search,
+  Keyboard, Compass, HelpCircle, RefreshCw, Clock,
 } from 'lucide-react';
 
 // ===== Helpers =====
@@ -47,19 +49,36 @@ function formatRelativeTime(dateStr: string): string {
   return date.toLocaleDateString('zh-CN');
 }
 
+// ===== Tab definitions (static, no re-renders) =====
+const TABS = [
+  { value: 'dashboard', icon: LayoutDashboard, label: '数据概览' },
+  { value: 'projects', icon: FolderKanban, label: '项目管理' },
+  { value: 'users', icon: Users, label: '用户管理' },
+  { value: 'departments', icon: Building2, label: '单位管理' },
+  { value: 'devices', icon: Monitor, label: '设备列表' },
+  { value: 'ipmap', icon: Globe, label: 'IP 分布' },
+  { value: 'logs', icon: FileText, label: '操作日志' },
+  { value: 'apikeys', icon: KeyRound, label: 'API 管理' },
+  { value: 'settings', icon: Settings, label: '系统设置' },
+];
+
 // ===== Main App =====
 export default function HomePage() {
   const { user, checking, checkAuth, logout } = useAuthStore();
+  const qc = useQueryClient();
   const { theme, setTheme } = useTheme();
   const isMobile = useIsMobile();
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showChangePwd, setShowChangePwd] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const [notifications, setNotifications] = useState<Array<{ id: number; type: string; title: string; time: string; read: boolean }>>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [pwdForm, setPwdForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
   const [pwdSaving, setPwdSaving] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Global Search state
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -73,6 +92,13 @@ export default function HomePage() {
     departments: Array<{ id: number; name: string; code: string | null; projectName: string | null }>;
   }>({ devices: [], projects: [], users: [], departments: [] });
 
+  const handleRefreshAll = useCallback(async () => {
+    setIsRefreshing(true);
+    await qc.invalidateQueries();
+    setLastRefresh(new Date());
+    setTimeout(() => setIsRefreshing(false), 600);
+  }, [qc]);
+
   const handleTabChange = useCallback((tab: string) => {
     setActiveTab(tab);
     setSidebarOpen(false);
@@ -81,18 +107,78 @@ export default function HomePage() {
   useEffect(() => { checkAuth(); }, [checkAuth]);
   useEffect(() => { setMounted(true); }, []);
 
-  // Global Search: keyboard shortcut Cmd/Ctrl+K
+  // Global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInputFocused = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT';
+
+      // Cmd/Ctrl+K: Global search
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         searchInputRef.current?.focus();
         setSearchOpen(true);
+        return;
+      }
+
+      // Cmd/Ctrl+/: Toggle shortcuts panel
+      if ((e.metaKey || e.ctrlKey) && e.key === '/') {
+        e.preventDefault();
+        setShowShortcuts(prev => !prev);
+        return;
+      }
+
+      // Escape: Close dialogs / clear search
+      if (e.key === 'Escape') {
+        if (searchOpen) {
+          setSearchQuery('');
+          setSearchOpen(false);
+          setSearchResults({ devices: [], projects: [], users: [], departments: [] });
+          searchInputRef.current?.blur();
+        }
+        if (showShortcuts) setShowShortcuts(false);
+        return;
+      }
+
+      // Only process the following when no input is focused and search is not open
+      if (!searchOpen && !isInputFocused) {
+        // Number keys 1-9: Switch to corresponding tab
+        if (e.key >= '1' && e.key <= '9' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+          const tabIndex = parseInt(e.key) - 1;
+          if (tabIndex < TABS.length) {
+            e.preventDefault();
+            setActiveTab(TABS[tabIndex].value);
+          }
+          return;
+        }
+
+        // Arrow Left/Right: Switch between tabs
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          const currentIdx = TABS.findIndex(t => t.value === activeTab);
+          if (currentIdx > 0) setActiveTab(TABS[currentIdx - 1].value);
+          else setActiveTab(TABS[TABS.length - 1].value);
+          return;
+        }
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          const currentIdx = TABS.findIndex(t => t.value === activeTab);
+          if (currentIdx < TABS.length - 1) setActiveTab(TABS[currentIdx + 1].value);
+          else setActiveTab(TABS[0].value);
+          return;
+        }
+
+        // ?: Open shortcuts help
+        if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+          e.preventDefault();
+          setShowShortcuts(true);
+          return;
+        }
       }
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [searchOpen, showShortcuts, activeTab]);
 
   // Global Search: debounced fetch
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -179,17 +265,7 @@ export default function HomePage() {
 
   if (!user) return <LoginPage />;
 
-  const tabs = [
-    { value: 'dashboard', icon: LayoutDashboard, label: '数据概览' },
-    { value: 'projects', icon: FolderKanban, label: '项目管理' },
-    { value: 'users', icon: Users, label: '用户管理' },
-    { value: 'departments', icon: Building2, label: '单位管理' },
-    { value: 'devices', icon: Monitor, label: '设备列表' },
-    { value: 'ipmap', icon: Globe, label: 'IP 分布' },
-    { value: 'logs', icon: FileText, label: '操作日志' },
-    { value: 'apikeys', icon: KeyRound, label: 'API 管理' },
-    { value: 'settings', icon: Settings, label: '系统设置' },
-  ];
+  const tabs = TABS;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -223,11 +299,13 @@ export default function HomePage() {
                     onChange={(e) => handleSearchChange(e.target.value)}
                     onFocus={() => { if (searchQuery.trim()) setSearchOpen(true); }}
                     onKeyDown={(e) => { if (e.key === 'Escape') { setSearchQuery(''); setSearchOpen(false); setSearchResults({ devices: [], projects: [], users: [], departments: [] }); searchInputRef.current?.blur(); } }}
-                    placeholder="搜索设备、项目、用户... (⌘K)"
+                    placeholder="搜索设备、项目、用户..."
                     className="w-full h-8 pl-8 pr-3 rounded-lg bg-white/10 border border-white/10 text-sm text-white placeholder:text-emerald-200/50 focus:outline-none focus:ring-1 focus:ring-white/30 focus:bg-white/15 transition-all"
                   />
-                  {searchLoading && (
+                  {searchLoading ? (
                     <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-200/70 animate-spin" />
+                  ) : (
+                    <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-emerald-200/50 bg-white/5 border border-white/10 rounded px-1.5 py-0.5 font-mono pointer-events-none">⌘K</kbd>
                   )}
                 </div>
               </PopoverTrigger>
@@ -450,6 +528,22 @@ export default function HomePage() {
               {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </Button>
 
+            {/* Refresh / Last Updated */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-emerald-200/60 hidden sm:flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                最近更新 {lastRefresh.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-emerald-100/80 hover:text-white hover:bg-white/10 h-9 w-9"
+                onClick={handleRefreshAll}
+              >
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+
             {/* User Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -593,6 +687,7 @@ export default function HomePage() {
               </div>
               修改密码
             </DialogTitle>
+            <DialogDescription className="sr-only">修改当前用户的登录密码</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="space-y-2">
@@ -614,6 +709,87 @@ export default function HomePage() {
               {pwdSaving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}确认修改
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Keyboard Shortcuts Dialog */}
+      <Dialog open={showShortcuts} onOpenChange={setShowShortcuts}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                <Keyboard className="w-4 h-4 text-emerald-600" />
+              </div>
+              键盘快捷键
+            </DialogTitle>
+            <DialogDescription className="sr-only">键盘快捷键帮助面板</DialogDescription>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground -mt-1">使用快捷键提升操作效率</p>
+
+          <div className="space-y-5 pt-2">
+            {/* 导航 Section */}
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 mb-3">
+                <Compass className="w-3.5 h-3.5" />
+                导航
+              </h4>
+              <div className="space-y-2.5">
+                <div className="grid grid-cols-2 items-center">
+                  <span className="text-sm text-foreground">全局搜索</span>
+                  <div className="flex justify-end gap-1">
+                    <kbd className="rounded border bg-muted px-2 py-0.5 text-xs font-mono">⌘K</kbd>
+                    <span className="text-xs text-muted-foreground self-center">/</span>
+                    <kbd className="rounded border bg-muted px-2 py-0.5 text-xs font-mono">Ctrl+K</kbd>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 items-center">
+                  <span className="text-sm text-foreground">显示快捷键帮助</span>
+                  <div className="flex justify-end gap-1">
+                    <kbd className="rounded border bg-muted px-2 py-0.5 text-xs font-mono">⌘/</kbd>
+                    <span className="text-xs text-muted-foreground self-center">/</span>
+                    <kbd className="rounded border bg-muted px-2 py-0.5 text-xs font-mono">Ctrl+/</kbd>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 items-center">
+                  <span className="text-sm text-foreground">切换到对应标签页</span>
+                  <div className="flex justify-end">
+                    <kbd className="rounded border bg-muted px-2 py-0.5 text-xs font-mono">1-9</kbd>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 items-center">
+                  <span className="text-sm text-foreground">上一个/下一个标签页</span>
+                  <div className="flex justify-end gap-1">
+                    <kbd className="rounded border bg-muted px-2 py-0.5 text-xs font-mono">←</kbd>
+                    <kbd className="rounded border bg-muted px-2 py-0.5 text-xs font-mono">→</kbd>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* 通用 Section */}
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 mb-3">
+                <HelpCircle className="w-3.5 h-3.5" />
+                通用
+              </h4>
+              <div className="space-y-2.5">
+                <div className="grid grid-cols-2 items-center">
+                  <span className="text-sm text-foreground">关闭对话框/清除搜索</span>
+                  <div className="flex justify-end">
+                    <kbd className="rounded border bg-muted px-2 py-0.5 text-xs font-mono">Esc</kbd>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 items-center">
+                  <span className="text-sm text-foreground">打开帮助</span>
+                  <div className="flex justify-end">
+                    <kbd className="rounded border bg-muted px-2 py-0.5 text-xs font-mono">?</kbd>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

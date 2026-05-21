@@ -7,10 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import {
   Download, Upload, Server, Database, Cpu, Clock, Info, Trash2,
   Loader2, DatabaseBackup, ShieldCheck, AlertTriangle, FileJson, Monitor,
+  FileText, ChevronDown, Users, Building2, Activity,
 } from 'lucide-react';
 
 // ===== Types =====
@@ -40,6 +42,18 @@ function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function formatRelativeTime(dateStr: string): string {
+  const now = Date.now();
+  const diff = now - new Date(dateStr).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return '刚刚';
+  if (minutes < 60) return `${minutes}分钟前`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}小时前`;
+  const days = Math.floor(hours / 24);
+  return `${days}天前`;
 }
 
 // ===== Settings Tab Component =====
@@ -125,7 +139,6 @@ export function SettingsTab() {
       return;
     }
     parseBackupFile(file);
-    // Reset input so the same file can be selected again
     e.target.value = '';
   }, [parseBackupFile]);
 
@@ -153,7 +166,6 @@ export function SettingsTab() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '恢复失败');
       toast.success(data.message || '数据恢复成功');
-      // Invalidate all queries to refetch fresh data
       queryClient.invalidateQueries();
       setBackupPreview(null);
       setShowRestoreConfirm(false);
@@ -213,10 +225,146 @@ export function SettingsTab() {
     { label: 'API Key数', value: (backupPreview.data.apiKeys?.length || 0) + ' 条' },
   ] : [];
 
+  // Recent activity quick stats
+  const recentActivityItems = systemInfo ? [
+    {
+      label: '最近采集',
+      value: systemInfo.latestActivity.lastDeviceCollection
+        ? formatRelativeTime(systemInfo.latestActivity.lastDeviceCollection)
+        : '无记录',
+      icon: Monitor,
+      color: 'emerald',
+    },
+    {
+      label: '最近日志',
+      value: systemInfo.latestActivity.lastLogTime
+        ? formatRelativeTime(systemInfo.latestActivity.lastLogTime)
+        : '无记录',
+      icon: Activity,
+      color: 'teal',
+    },
+    {
+      label: '设备总数',
+      value: String(systemInfo.stats.deviceCount),
+      icon: Monitor,
+      color: 'cyan',
+    },
+    {
+      label: '今日日志',
+      value: String(systemInfo.stats.logCount),
+      icon: FileText,
+      color: 'amber',
+    },
+  ] : [];
+
+  // Export items configuration
+  const exportItems = [
+    { label: '设备列表', href: '/api/devices/export', icon: Monitor, color: 'emerald' },
+    { label: '项目列表', href: '/api/projects/export', icon: Database, color: 'teal' },
+    { label: '用户列表', href: '/api/users/export', icon: Users, color: 'cyan' },
+    { label: '单位列表', href: '/api/departments/export', icon: Building2, color: 'amber' },
+  ];
+
+  const colorClasses: Record<string, { bg: string; iconBg: string; iconText: string; hoverBg: string }> = {
+    emerald: { bg: 'bg-emerald-50 dark:bg-emerald-950/30', iconBg: 'bg-emerald-100 dark:bg-emerald-900/50', iconText: 'text-emerald-600', hoverBg: 'hover:bg-emerald-100 dark:hover:bg-emerald-950/50' },
+    teal: { bg: 'bg-teal-50 dark:bg-teal-950/30', iconBg: 'bg-teal-100 dark:bg-teal-900/50', iconText: 'text-teal-600', hoverBg: 'hover:bg-teal-100 dark:hover:bg-teal-950/50' },
+    cyan: { bg: 'bg-cyan-50 dark:bg-cyan-950/30', iconBg: 'bg-cyan-100 dark:bg-cyan-900/50', iconText: 'text-cyan-600', hoverBg: 'hover:bg-cyan-100 dark:hover:bg-cyan-950/50' },
+    amber: { bg: 'bg-amber-50 dark:bg-amber-950/30', iconBg: 'bg-amber-100 dark:bg-amber-900/50', iconText: 'text-amber-600', hoverBg: 'hover:bg-amber-100 dark:hover:bg-amber-950/50' },
+  };
+
   return (
     <div className="space-y-6 pb-6 max-w-4xl">
+      {/* ===== Data Export Card ===== */}
+      <Card className="border-0 shadow-sm overflow-hidden transition-shadow hover:shadow-md">
+        <div className="h-1 bg-gradient-to-r from-cyan-400 to-teal-500" />
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center">
+              <FileText className="w-4 h-4 text-cyan-600" />
+            </div>
+            数据导出
+          </CardTitle>
+          <CardDescription className="text-xs">
+            将设备、项目、用户、单位数据导出为 CSV 或 Excel (XLSX) 格式文件
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {exportItems.map((item) => {
+              const colors = colorClasses[item.color];
+              const Icon = item.icon;
+              return (
+                <div
+                  key={item.label}
+                  className={`${colors.bg} rounded-lg p-3 transition-shadow hover:shadow-sm`}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={`w-7 h-7 rounded-md ${colors.iconBg} flex items-center justify-center shrink-0`}>
+                      <Icon className={`w-3.5 h-3.5 ${colors.iconText}`} />
+                    </div>
+                    <span className="text-sm font-medium truncate">{item.label}</span>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="w-full text-xs gap-1">
+                        <Download className="w-3 h-3" />
+                        导出
+                        <ChevronDown className="w-3 h-3 ml-0.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem asChild>
+                        <a href={`${item.href}?format=csv`} download className="cursor-pointer">
+                          <FileText className="w-4 h-4 mr-2" />导出 CSV
+                        </a>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <a href={`${item.href}?format=xlsx`} download className="cursor-pointer">
+                          <FileText className="w-4 h-4 mr-2" />导出 XLSX
+                        </a>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ===== Recent Activity Quick Stats ===== */}
+      {systemInfo && (
+        <Card className="border-0 shadow-sm transition-shadow hover:shadow-md">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                <Activity className="w-3.5 h-3.5 text-purple-600" />
+              </div>
+              <span className="text-sm font-medium">最近操作</span>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {recentActivityItems.map((item) => {
+                const colors = colorClasses[item.color];
+                const Icon = item.icon;
+                return (
+                  <div key={item.label} className={`${colors.bg} rounded-lg p-2.5 flex items-center gap-2.5`}>
+                    <div className={`w-8 h-8 rounded-md ${colors.iconBg} flex items-center justify-center shrink-0`}>
+                      <Icon className={`w-4 h-4 ${colors.iconText}`} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{item.label}</p>
+                      <p className="text-sm font-semibold tabular-nums truncate">{item.value}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* ===== Data Backup Card ===== */}
-      <Card className="border-0 shadow-sm overflow-hidden">
+      <Card className="border-0 shadow-sm overflow-hidden transition-shadow hover:shadow-md">
         <div className="h-1 bg-gradient-to-r from-emerald-400 to-emerald-600" />
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
@@ -248,7 +396,7 @@ export function SettingsTab() {
       </Card>
 
       {/* ===== Data Restore Card ===== */}
-      <Card className="border-0 shadow-sm overflow-hidden">
+      <Card className="border-0 shadow-sm overflow-hidden transition-shadow hover:shadow-md">
         <div className="h-1 bg-gradient-to-r from-amber-400 to-amber-600" />
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
@@ -333,7 +481,7 @@ export function SettingsTab() {
       </Card>
 
       {/* ===== System Information Card ===== */}
-      <Card className="border-0 shadow-sm">
+      <Card className="border-0 shadow-sm transition-shadow hover:shadow-md">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center">
@@ -424,7 +572,7 @@ export function SettingsTab() {
       </Card>
 
       {/* ===== Quick Actions Card ===== */}
-      <Card className="border-0 shadow-sm border-red-200 dark:border-red-900 overflow-hidden">
+      <Card className="border-0 shadow-sm border-red-200 dark:border-red-900 overflow-hidden transition-shadow hover:shadow-md">
         <div className="h-1 bg-gradient-to-r from-red-400 to-red-600" />
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
@@ -482,21 +630,38 @@ export function SettingsTab() {
       </Card>
 
       {/* ===== About Card ===== */}
-      <Card className="border-0 shadow-sm">
+      <Card className="border-0 shadow-sm transition-shadow hover:shadow-md">
         <CardContent className="p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-200/50">
                 <Monitor className="w-5 h-5 text-white" />
               </div>
               <div>
                 <p className="text-sm font-semibold">设备信息采集器 · 管理端</p>
-                <p className="text-xs text-muted-foreground">v2.0.0 · Powered by Next.js 16 + Prisma + SQLite</p>
+                <p className="text-xs text-muted-foreground">v2.0.0</p>
               </div>
             </div>
             <Badge variant="secondary" className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
               稳定版
             </Badge>
+          </div>
+          <Separator className="mb-3" />
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              { label: 'Next.js 16', color: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' },
+              { label: 'React 19', color: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400' },
+              { label: 'Prisma', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
+              { label: 'SQLite', color: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' },
+              { label: 'Tailwind CSS', color: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400' },
+              { label: 'shadcn/ui', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+              { label: 'TanStack Query', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
+              { label: 'Recharts', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
+            ].map((tech) => (
+              <Badge key={tech.label} variant="outline" className={`text-[10px] border-0 ${tech.color}`}>
+                {tech.label}
+              </Badge>
+            ))}
           </div>
         </CardContent>
       </Card>

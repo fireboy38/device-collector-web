@@ -274,7 +274,7 @@ export function DashboardTab() {
         {statCards.map((s) => (
           <Card
             key={s.label}
-            className="overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow"
+            className="overflow-hidden border-0 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-default"
           >
             <CardContent className="p-5">
               <div className="flex items-center justify-between">

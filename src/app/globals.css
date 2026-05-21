@@ -200,15 +200,18 @@
 
 /* Table row hover transition */
 .table-row-hover {
-  transition: background-color 0.15s ease, transform 0.1s ease;
+  transition: background-color 0.2s ease, border-left-color 0.2s ease, transform 0.1s ease;
+  border-left: 3px solid transparent;
 }
 
 .table-row-hover:hover {
   background-color: oklch(0.96 0.01 155);
+  border-left-color: oklch(0.508 0.144 163.4);
 }
 
 .dark .table-row-hover:hover {
   background-color: oklch(0.25 0.015 155);
+  border-left-color: oklch(0.608 0.144 163.4);
 }
 
 /* Card hover lift effect */

@@ -7,14 +7,16 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Loader2, KeyRound, Search, Download, Upload, Inbox } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, KeyRound, Search, Download, Upload, Inbox, ChevronDown, FileText, FolderKanban } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export function ProjectsTab() {
   const qc = useQueryClient();
@@ -99,10 +101,29 @@ export function ProjectsTab() {
     <div className="space-y-4 pb-6">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h2 className="text-lg font-semibold">项目列表</h2>
-        <Button onClick={() => { resetForm(); setShowAdd(true); }} className="bg-emerald-600 hover:bg-emerald-700">
-          <Plus className="w-4 h-4 mr-1" />新建项目
-        </Button>
+        <h2 className="text-lg font-semibold flex items-center gap-2">项目列表<Badge variant="secondary" className="text-[10px] ml-1 bg-muted text-muted-foreground">{projects?.length ?? 0}</Badge></h2>
+        <div className="flex gap-2 items-center">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm"><Download className="w-4 h-4 mr-1" />导出<ChevronDown className="w-3 h-3 ml-0.5" /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <a href="/api/projects/export?format=csv" download className="cursor-pointer">
+                  <FileText className="w-4 h-4 mr-2" />导出 CSV
+                </a>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <a href="/api/projects/export?format=xlsx" download className="cursor-pointer">
+                  <FileText className="w-4 h-4 mr-2" />导出 XLSX
+                </a>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button onClick={() => { resetForm(); setShowAdd(true); }} className="bg-emerald-600 hover:bg-emerald-700">
+            <Plus className="w-4 h-4 mr-1" />新建项目
+          </Button>
+        </div>
       </div>
 
       {/* Table */}
@@ -141,37 +162,56 @@ export function ProjectsTab() {
                       {formatShortDate(p.createdAt)}
                     </TableCell>
                     <TableCell>
+                      <TooltipProvider delayDuration={300}>
                       <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => {
-                            setForm({ name: p.name, code: p.code || '', description: p.description || '' });
-                            setEditItem(p);
-                          }}
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-red-500 hover:text-red-700"
-                          onClick={() => setDeleteItem(p)}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => {
+                                setForm({ name: p.name, code: p.code || '', description: p.description || '' });
+                                setEditItem(p);
+                              }}
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="text-xs">编辑</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-red-500 hover:text-red-700"
+                              onClick={() => setDeleteItem(p)}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="text-xs">删除</TooltipContent>
+                        </Tooltip>
                       </div>
+                      </TooltipProvider>
                     </TableCell>
                   </TableRow>
                 ))}
                 {(!projects || projects.length === 0) && (
                   <TableRow>
-                    <TableCell colSpan={9} className="py-12">
-                      <div className="flex flex-col items-center gap-2 text-center">
-                        <Inbox className="w-10 h-10 text-muted-foreground/30" />
-                        <p className="text-sm font-medium">暂无项目</p>
-                        <p className="text-xs text-muted-foreground">点击新建项目按钮创建第一个项目</p>
+                    <TableCell colSpan={9} className="py-16">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center">
+                          <FolderKanban className="w-8 h-8 text-muted-foreground/30" />
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm font-medium text-muted-foreground">暂无项目</p>
+                          <p className="text-xs text-muted-foreground/70 mt-1">点击新建项目按钮创建第一个项目</p>
+                        </div>
+                        <Button variant="outline" size="sm" className="mt-2" onClick={() => { resetForm(); setShowAdd(true); }}>
+                          <Plus className="w-3.5 h-3.5 mr-1" />新建项目
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -187,6 +227,7 @@ export function ProjectsTab() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{editItem ? '编辑项目' : '新建项目'}</DialogTitle>
+            <DialogDescription className="sr-only">{editItem ? '修改项目基本信息' : '填写项目信息创建新项目'}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">

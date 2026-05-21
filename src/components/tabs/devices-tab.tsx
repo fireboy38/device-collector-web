@@ -7,7 +7,7 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,7 @@ import { Monitor, Pencil, Trash2, Eye, AlertTriangle, Search, Download, Upload, 
   Server, Cpu, HardDrive, Network, Wifi, Users, Globe, FileText, KeyRound, Plus, ChevronDown,
   Filter, X, SlidersHorizontal, Printer, GitCompare } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export function DevicesTab() {
   const qc = useQueryClient();
@@ -184,6 +185,10 @@ export function DevicesTab() {
 
   return (
     <div className="space-y-4 pb-6">
+      {/* Header with count */}
+      <div className="flex justify-between items-center">
+        <h2 className="text-lg font-semibold flex items-center gap-2">设备列表<Badge variant="secondary" className="text-[10px] ml-1 bg-muted text-muted-foreground">{devices?.length ?? 0}</Badge></h2>
+      </div>
       {/* Filters */}
       <div className="space-y-3">
         <div className="flex flex-wrap gap-3 items-end">
@@ -401,31 +406,58 @@ export function DevicesTab() {
                     <TableCell><Badge className={d.dhcpEnabled === '是' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'} variant="outline">{d.dhcpEnabled || '-'}</Badge></TableCell>
                     <TableCell className="hidden lg:table-cell text-xs text-muted-foreground">{formatDate(d.collectedAt)}</TableCell>
                     <TableCell>
+                      <TooltipProvider delayDuration={300}>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewDevice(d)} title="查看详情"><Eye className="w-3.5 h-3.5" /></Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
-                          setEditForm({
-                            departmentId: String(d.departmentId), userName: d.userName, userPhone: d.userPhone || '',
-                            userPosition: d.userPosition || '', computerName: d.computerName || '', ipAddress: d.ipAddress || '',
-                            macAddress: d.macAddress || '', dhcpEnabled: d.dhcpEnabled || '', osInfo: d.osInfo || '',
-                            cpuInfo: d.cpuInfo || '', ramInfo: d.ramInfo || '', diskInfo: d.diskInfo || '',
-                            motherboardInfo: d.motherboardInfo || '', gpuInfo: d.gpuInfo || '', networkAdapter: d.networkAdapter || '',
-                            subnetMask: d.subnetMask || '', gateway: d.gateway || '', dnsServers: d.dnsServers || '',
-                          });
-                          setEditDevice(d);
-                        }} title="编辑"><Pencil className="w-3.5 h-3.5" /></Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => setDeleteItem(d)} title="删除"><Trash2 className="w-3.5 h-3.5" /></Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewDevice(d)}>
+                              <Eye className="w-3.5 h-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="text-xs">查看详情</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+                              setEditForm({
+                                departmentId: String(d.departmentId), userName: d.userName, userPhone: d.userPhone || '',
+                                userPosition: d.userPosition || '', computerName: d.computerName || '', ipAddress: d.ipAddress || '',
+                                macAddress: d.macAddress || '', dhcpEnabled: d.dhcpEnabled || '', osInfo: d.osInfo || '',
+                                cpuInfo: d.cpuInfo || '', ramInfo: d.ramInfo || '', diskInfo: d.diskInfo || '',
+                                motherboardInfo: d.motherboardInfo || '', gpuInfo: d.gpuInfo || '', networkAdapter: d.networkAdapter || '',
+                                subnetMask: d.subnetMask || '', gateway: d.gateway || '', dnsServers: d.dnsServers || '',
+                              });
+                              setEditDevice(d);
+                            }}>
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="text-xs">编辑</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => setDeleteItem(d)}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="text-xs">删除</TooltipContent>
+                        </Tooltip>
                       </div>
+                      </TooltipProvider>
                     </TableCell>
                   </TableRow>
                 ))}
                 {(!devices || devices.length === 0) && (
                   <TableRow>
-                    <TableCell colSpan={12} className="py-12">
-                      <div className="flex flex-col items-center gap-2 text-center">
-                        <Monitor className="w-10 h-10 text-muted-foreground/30" />
-                        <p className="text-sm font-medium">暂无设备</p>
-                        <p className="text-xs text-muted-foreground">可通过批量导入或API提交添加设备</p>
+                    <TableCell colSpan={12} className="py-16">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center">
+                          <Monitor className="w-8 h-8 text-muted-foreground/30" />
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm font-medium text-muted-foreground">暂无设备</p>
+                          <p className="text-xs text-muted-foreground/70 mt-1">可通过批量导入或API提交添加设备</p>
+                        </div>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -444,6 +476,7 @@ export function DevicesTab() {
               <Monitor className="w-5 h-5 text-emerald-600" />
               设备详细信息
             </DialogTitle>
+            <DialogDescription className="sr-only">查看设备详细信息，包括人员、网络和硬件信息</DialogDescription>
           </DialogHeader>
           {viewDevice && (
             <div className="space-y-4">
@@ -506,6 +539,7 @@ export function DevicesTab() {
               <Pencil className="w-5 h-5 text-emerald-600" />
               编辑设备信息
             </DialogTitle>
+            <DialogDescription className="sr-only">修改设备的人员、网络和硬件信息</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             {/* Personnel */}
@@ -551,6 +585,7 @@ export function DevicesTab() {
               <Upload className="w-5 h-5 text-emerald-600" />
               批量导入设备
             </DialogTitle>
+            <DialogDescription className="sr-only">上传CSV文件批量导入设备数据</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -624,6 +659,7 @@ export function DevicesTab() {
               <GitCompare className="w-5 h-5 text-emerald-600" />
               设备对比
             </DialogTitle>
+            <DialogDescription className="sr-only">对比多台设备的配置差异</DialogDescription>
           </DialogHeader>
           {(() => {
             const selectedDevices = devices?.filter(d => compareIds.includes(d.id)) || [];
@@ -756,6 +792,7 @@ export function DevicesTab() {
               <Printer className="w-5 h-5 text-emerald-600" />
               设备信息报告
             </DialogTitle>
+            <DialogDescription className="sr-only">预览并打印设备信息报告</DialogDescription>
           </DialogHeader>
           <div id="print-report" className="space-y-4 print-area">
             {/* Report Header */}

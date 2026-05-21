@@ -7,14 +7,24 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Loader2, KeyRound, Search, Download, Upload, Users } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, KeyRound, Search, Download, Upload, Users, ChevronDown, ChevronUp, Clock, X, FileText, UserCircle } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
+interface UserActivity {
+  id: number;
+  logType: string;
+  content: string;
+  ipAddress: string | null;
+  createdAt: string;
+}
 
 export function UsersTab() {
   const qc = useQueryClient();
@@ -35,6 +45,13 @@ export function UsersTab() {
   const [deleteItem, setDeleteItem] = useState<User | null>(null);
   const [form, setForm] = useState({ username: '', password: '123456', displayName: '', projectId: '', role: 'user' });
   const [saving, setSaving] = useState(false);
+  const [expandedUserId, setExpandedUserId] = useState<number | null>(null);
+
+  const { data: activityData, isLoading: activityLoading } = useQuery<UserActivity[]>({
+    queryKey: ['user-activity', expandedUserId],
+    queryFn: () => fetch(`/api/users/${expandedUserId}/activity`).then(r => r.json()),
+    enabled: expandedUserId !== null,
+  });
 
   const resetForm = () => setForm({ username: '', password: '123456', displayName: '', projectId: '', role: 'user' });
 
@@ -123,7 +140,7 @@ export function UsersTab() {
     <div className="space-y-4 pb-6">
       {/* Header */}
       <div className="flex flex-wrap justify-between items-center gap-3">
-        <h2 className="text-lg font-semibold">用户列表</h2>
+        <h2 className="text-lg font-semibold flex items-center gap-2">用户列表<Badge variant="secondary" className="text-[10px] ml-1 bg-muted text-muted-foreground">{users?.length ?? 0}</Badge></h2>
         <div className="flex gap-2 items-center flex-wrap">
           <Select value={filterProject} onValueChange={setFilterProject}>
             <SelectTrigger className="w-[160px]">
@@ -136,6 +153,23 @@ export function UsersTab() {
               ))}
             </SelectContent>
           </Select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm"><Download className="w-4 h-4 mr-1" />导出<ChevronDown className="w-3 h-3 ml-0.5" /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <a href={`/api/users/export?format=csv${filterProject && filterProject !== 'all' ? `&project_id=${filterProject}` : ''}`} download className="cursor-pointer">
+                  <FileText className="w-4 h-4 mr-2" />导出 CSV
+                </a>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <a href={`/api/users/export?format=xlsx${filterProject && filterProject !== 'all' ? `&project_id=${filterProject}` : ''}`} download className="cursor-pointer">
+                  <FileText className="w-4 h-4 mr-2" />导出 XLSX
+                </a>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button onClick={() => { resetForm(); setShowAdd(true); }} className="bg-emerald-600 hover:bg-emerald-700">
             <Plus className="w-4 h-4 mr-1" />添加用户
           </Button>
@@ -161,95 +195,191 @@ export function UsersTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users?.map(u => (
-                  <TableRow key={u.id} className="table-row-hover">
-                    <TableCell>{u.id}</TableCell>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={`inline-block w-2 h-2 rounded-full shrink-0 ${
-                            u.lastLoginAt && (Date.now() - new Date(u.lastLoginAt).getTime()) < 5 * 60 * 1000
-                              ? 'bg-emerald-500 animate-pulse'
-                              : 'bg-slate-300 dark:bg-slate-600'
+                {users?.map(u => {
+                  const isExpanded = expandedUserId === u.id;
+                  return (
+                    <TableRow
+                      key={u.id}
+                      className={`table-row-hover ${isExpanded ? 'border-l-2 border-l-emerald-400 bg-muted/20' : ''}`}
+                    >
+                      <TableCell>{u.id}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`inline-block w-2 h-2 rounded-full shrink-0 ${
+                              u.lastLoginAt && (Date.now() - new Date(u.lastLoginAt).getTime()) < 5 * 60 * 1000
+                                ? 'bg-emerald-500 animate-pulse'
+                                : 'bg-slate-300 dark:bg-slate-600'
+                            }`}
+                          />
+                          <button
+                            onClick={() => setExpandedUserId(isExpanded ? null : u.id)}
+                            className="flex items-center gap-1 hover:text-emerald-600 transition-colors"
+                          >
+                            {u.username}
+                            {isExpanded ? (
+                              <ChevronUp className="w-3.5 h-3.5 text-emerald-500" />
+                            ) : (
+                              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                            )}
+                          </button>
+                        </div>
+                      </TableCell>
+                      <TableCell>{u.displayName || '-'}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-[10px]">{u.projectName || '未关联'}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] ${
+                            u.role === 'admin'
+                              ? 'bg-red-50 text-red-700 border-red-200'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                           }`}
-                        />
-                        {u.username}
-                      </div>
-                    </TableCell>
-                    <TableCell>{u.displayName || '-'}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-[10px]">{u.projectName || '未关联'}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={`text-[10px] ${
-                          u.role === 'admin'
-                            ? 'bg-red-50 text-red-700 border-red-200'
-                            : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        }`}
-                      >
-                        {u.role === 'admin' ? '管理员' : '普通用户'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
-                      {u.lastLoginAt ? formatRelativeTime(u.lastLoginAt) : '从未登录'}
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <Badge variant="outline" className="text-[10px] bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/30 dark:text-teal-400 dark:border-teal-800">
-                        {u.loginCount ?? 0} 次
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                      {formatShortDate(u.createdAt)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => {
-                            setForm({
-                              username: u.username,
-                              password: '',
-                              displayName: u.displayName || '',
-                              projectId: u.projectId ? String(u.projectId) : '',
-                              role: u.role,
-                            });
-                            setEditItem(u);
-                          }}
                         >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleResetPwd(u.id)}
-                          title="重置密码"
-                        >
-                          <KeyRound className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-red-500 hover:text-red-700"
-                          onClick={() => setDeleteItem(u)}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                          {u.role === 'admin' ? '管理员' : '普通用户'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
+                        {u.lastLoginAt ? formatRelativeTime(u.lastLoginAt) : '从未登录'}
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        <Badge variant="outline" className="text-[10px] bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/30 dark:text-teal-400 dark:border-teal-800">
+                          {u.loginCount ?? 0} 次
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                        {formatShortDate(u.createdAt)}
+                      </TableCell>
+                      <TableCell>
+                        <TooltipProvider delayDuration={300}>
+                        <div className="flex gap-1">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => {
+                                  setForm({
+                                    username: u.username,
+                                    password: '',
+                                    displayName: u.displayName || '',
+                                    projectId: u.projectId ? String(u.projectId) : '',
+                                    role: u.role,
+                                  });
+                                  setEditItem(u);
+                                }}
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="text-xs">编辑</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => handleResetPwd(u.id)}
+                              >
+                                <KeyRound className="w-3.5 h-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="text-xs">重置密码</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-red-500 hover:text-red-700"
+                                onClick={() => setDeleteItem(u)}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="text-xs">删除</TooltipContent>
+                          </Tooltip>
+                        </div>
+                        </TooltipProvider>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {/* Activity panel row */}
+                {users?.map(u => {
+                  if (expandedUserId !== u.id) return null;
+                  return (
+                    <TableRow key={`activity-${u.id}`} className="bg-transparent hover:bg-transparent">
+                      <TableCell colSpan={9} className="p-0 border-0">
+                        <div className="mx-4 my-2 rounded-lg bg-muted/30 border-l-2 border-emerald-400 p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                              <Clock className="w-4 h-4" />
+                              登录活动
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                              onClick={() => setExpandedUserId(null)}
+                            >
+                              <X className="w-3 h-3 mr-1" />关闭
+                            </Button>
+                          </div>
+                          {activityLoading ? (
+                            <div className="flex items-center gap-2 py-3 text-xs text-muted-foreground">
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              加载中...
+                            </div>
+                          ) : activityData && activityData.length > 0 ? (
+                            <div className="max-h-40 overflow-y-auto space-y-1.5">
+                              {activityData.map(a => (
+                                <div key={a.id} className="flex items-center gap-2 text-xs">
+                                  <span
+                                    className={`inline-block w-2 h-2 rounded-full shrink-0 ${
+                                      a.logType === 'USER_LOGIN'
+                                        ? 'bg-emerald-500'
+                                        : a.logType === 'LOGIN_FAILED'
+                                          ? 'bg-red-500'
+                                          : 'bg-red-800'
+                                    }`}
+                                  />
+                                  <span className="text-muted-foreground truncate max-w-[50%]">{a.content}</span>
+                                  {a.ipAddress && (
+                                    <span className="font-mono text-muted-foreground/70">{a.ipAddress}</span>
+                                  )}
+                                  <span className="ml-auto text-muted-foreground/60 shrink-0">
+                                    {formatRelativeTime(a.createdAt)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground py-2">暂无登录记录</p>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
                 {(!users || users.length === 0) && (
                   <TableRow>
-                    <TableCell colSpan={9} className="py-12">
-                      <div className="flex flex-col items-center gap-2 text-center">
-                        <Users className="w-10 h-10 text-muted-foreground/30" />
-                        <p className="text-sm font-medium">暂无用户</p>
-                        <p className="text-xs text-muted-foreground">点击添加用户按钮创建新用户</p>
+                    <TableCell colSpan={9} className="py-16">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center">
+                          <UserCircle className="w-8 h-8 text-muted-foreground/30" />
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm font-medium text-muted-foreground">暂无用户</p>
+                          <p className="text-xs text-muted-foreground/70 mt-1">点击添加用户按钮创建新用户</p>
+                        </div>
+                        <Button variant="outline" size="sm" className="mt-2" onClick={() => { resetForm(); setShowAdd(true); }}>
+                          <Plus className="w-3.5 h-3.5 mr-1" />添加用户
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -265,6 +395,7 @@ export function UsersTab() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{editItem ? '编辑用户' : '添加用户'}</DialogTitle>
+            <DialogDescription className="sr-only">{editItem ? '修改用户信息和角色权限' : '创建新用户并分配项目与角色'}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">

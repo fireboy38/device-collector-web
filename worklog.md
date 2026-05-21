@@ -1023,3 +1023,223 @@ Stage Summary:
 - Subtle search input design with Search icon prefix, placeholder "搜索设备、项目、用户... (⌘K)"
 - All lint checks passing with zero errors
 - Dev server running successfully
+
+---
+Task ID: 5
+Agent: Data Export Agent
+Task: Add data export for Projects, Users, and Departments + Enhance Settings Tab
+
+Work Log:
+- Read worklog.md to understand project context and prior work
+- Reviewed existing devices export route, tab components, settings tab, Prisma schema, and API routes
+
+1. **Projects Export API** (`/src/app/api/projects/export/route.ts`):
+   - GET endpoint (no auth required, matching devices export pattern)
+   - Accepts `format` query param: "csv" (default) or "xlsx"
+   - CSV: generates with BOM, headers: ID, 项目名称, 编码, 描述, 用户数, 单位数, 设备数, 创建时间
+   - XLSX: uses xlsx package, creates workbook with sheet "项目列表", sets column widths
+   - User/dept/device counts via Prisma _count and device count query
+
+2. **Users Export API** (`/src/app/api/users/export/route.ts`):
+   - GET endpoint with optional `project_id` filter
+   - Headers: ID, 用户名, 姓名, 角色, 所属项目, 最后登录, 登录次数, 创建时间
+   - Aggregates login stats from logs table (same pattern as users GET route)
+   - XLSX with "用户列表" sheet name and proper column widths
+
+3. **Departments Export API** (`/src/app/api/departments/export/route.ts`):
+   - GET endpoint with optional `project_id` filter
+   - Headers: ID, 单位名称, 编码, 描述, 所属项目, 创建时间
+   - XLSX with "单位列表" sheet name and proper column widths
+
+4. **Export Dropdown in Projects Tab** (`projects-tab.tsx`):
+   - Added DropdownMenu with "导出" button and ChevronDown icon next to "新建项目"
+   - Two dropdown items: "导出 CSV" and "导出 XLSX" with FileText icons
+   - Added imports: ChevronDown, FileText, DropdownMenu components
+
+5. **Export Dropdown in Users Tab** (`users-tab.tsx`):
+   - Added DropdownMenu with "导出" button next to "添加用户"
+   - Passes project_id filter to export URLs when filtered
+   - Added imports: FileText, DropdownMenu components (ChevronDown already imported)
+
+6. **Export Dropdown in Departments Tab** (`departments-tab.tsx`):
+   - Added DropdownMenu with "导出" button next to "添加单位"
+   - Passes project_id filter to export URLs when filtered
+   - Added imports: ChevronDown, FileText, DropdownMenu components
+
+7. **Enhanced Settings Tab** (`settings-tab.tsx`):
+   - NEW: "数据导出" card (first card, cyan accent) with FileText icon header
+     - 4 export buttons in 2x2 grid (4 cols on desktop): 设备列表, 项目列表, 用户列表, 单位列表
+     - Each button has colored icon bg and DropdownMenu with CSV/XLSX options
+   - NEW: "最近操作" quick stats row showing recent activity counts
+     - 4 colored stat cards: 最近采集, 最近日志, 设备总数, 今日日志
+     - Uses systemInfo data with relative time formatting
+   - Improved visual styling:
+     - All cards now have `transition-shadow hover:shadow-md` for hover animation
+     - Added "About" card with detailed tech stack badges (Next.js 16, React 19, Prisma, SQLite, Tailwind CSS, shadcn/ui, TanStack Query, Recharts)
+     - Each badge has unique color (slate, cyan, emerald, teal, sky, amber, red, purple)
+   - Added imports: DropdownMenu, ChevronDown, FileText, Users, Building2, Activity
+
+Stage Summary:
+- Three new export API endpoints created for projects, users, and departments (CSV + XLSX)
+- Export dropdown buttons added to projects, users, and departments tabs
+- Settings tab enhanced with data export section, recent activity stats, hover animations, and detailed tech stack badges
+- All lint checks passing with zero errors
+- All 6 new export endpoints verified returning 200 status (CSV and XLSX)
+- Dev server stable and running
+
+---
+Task ID: 10
+Agent: UI Micro-Details Agent
+Task: Polish UI with More Micro-Details and Animations
+
+Work Log:
+- Read worklog.md to understand project context and previous work
+- Reviewed all relevant source files: globals.css, page.tsx, dashboard-tab.tsx, and all tab components
+
+Enhancements made:
+
+1. **Enhanced Tooltip System for Action Buttons**:
+   - Added tooltip imports (Tooltip, TooltipContent, TooltipProvider, TooltipTrigger) to 5 tab components
+   - Wrapped action button groups with `<TooltipProvider delayDuration={300}>`
+   - Each action button now wrapped with `<Tooltip><TooltipTrigger asChild>...<TooltipContent side="bottom" className="text-xs">`
+   - Tooltip texts applied: Eye→"查看详情", Pencil→"编辑", Trash2→"删除", KeyRound→"重置密码", Copy→"复制"
+   - Applied to: projects-tab.tsx, users-tab.tsx, departments-tab.tsx, devices-tab.tsx, apikeys-tab.tsx
+
+2. **Enhanced Empty States**:
+   - Upgraded empty state design across 6 tab components with polished pattern:
+     - 16x16 rounded-full bg-muted/50 icon container with larger icon
+     - Centered text with muted-foreground styling and helpful hint text
+     - Optional action button (e.g., "新建项目", "添加用户", etc.)
+   - Replaced simple text-only empty states in: projects-tab, users-tab, departments-tab, devices-tab, logs-tab, apikeys-tab
+   - Added appropriate entity-specific icons: FolderKanban, UserCircle, Building, Monitor, ScrollText, Shield
+
+3. **Record Count Badge**:
+   - Added count badge next to tab titles in 4 tab components
+   - "项目列表" + badge showing count, "用户列表" + badge, "单位列表" + badge, "设备列表" + badge
+   - Badge styling: `<Badge variant="secondary" className="text-[10px] ml-1 bg-muted text-muted-foreground">{count}</Badge>`
+   - Added new "设备列表" header with count badge to devices-tab.tsx (previously had no header title)
+
+4. **Enhanced Table Row Hover in globals.css**:
+   - Enhanced `.table-row-hover` class with left border animation
+   - Added `border-left: 3px solid transparent` base state
+   - On hover: `border-left-color: oklch(0.508 0.144 163.4)` (emerald color)
+   - Dark mode compatible with lighter emerald border color
+   - Smooth `transition: background-color 0.2s ease, border-left-color 0.2s ease`
+
+5. **Dashboard Stat Card Hover/Press Effects**:
+   - Added `hover:scale-[1.02]` for subtle scale-up on hover
+   - Added `active:scale-[0.98]` for press feedback
+   - Changed `transition-shadow` to `transition-all duration-200` for smooth all-property transitions
+   - Added `cursor-default` for better UX
+
+6. **最近更新 Timestamp Badge and Refresh Button**:
+   - Added `useQueryClient` import to page.tsx for query invalidation
+   - Added `lastRefresh` state (Date) and `isRefreshing` state
+   - Added `handleRefreshAll` callback that invalidates all queries and updates timestamp
+   - Added "最近更新 HH:MM" indicator in header with Clock icon (hidden on mobile)
+   - Added refresh button with RefreshCw icon that spins when refreshing
+   - Positioned between theme toggle and user dropdown in header
+
+7. **Lint & Build**: All changes pass `bun run lint` with zero errors, `bun run build` succeeds
+
+Stage Summary:
+- Tooltips added to all action buttons across 5 tab components for better UX discoverability
+- Empty states upgraded with polished icon containers, helpful text, and action buttons
+- Record count badges added to 4 tab headers for quick data overview
+- Table row hover enhanced with emerald left border animation (dark mode compatible)
+- Dashboard stat cards have hover scale and active press feedback
+- Header shows "最近更新" timestamp and refresh button with spinning animation
+- All lint checks passing, build succeeds, no functionality broken
+
+---
+Task ID: 11
+Agent: Main Agent (Current Session - Round 5)
+Task: Project status assessment, QA testing with agent-browser, bug fixes, and feature enhancements
+
+Work Log:
+- Read worklog.md to understand previous progress across 10+ sessions
+- Used agent-browser for comprehensive QA testing of all 9 tabs (desktop + mobile + dark mode)
+- Found and fixed critical 500 error: `ReferenceError: Cannot access 'tabs' before initialization`
+  - Root cause: TABS constant was defined after useEffect that referenced it
+  - Fix: Moved tab definitions to module-level constant `TABS`, removed from dependency array
+- Found and fixed Dialog accessibility warnings: `Missing Description or aria-describedby for {DialogContent}`
+  - Added `<DialogDescription className="sr-only">` to all 11 dialogs across 7 files
+- Verified console is clean after fixes (no warnings, no errors)
+
+New features and enhancements completed this session:
+
+1. **Keyboard Shortcuts System**:
+   - ⌘K / Ctrl+K: Global search (preserved existing)
+   - ⌘/ / Ctrl+/: Toggle keyboard shortcuts help panel
+   - 1-9 number keys: Switch to corresponding tab (when no input focused)
+   - ← / → arrow keys: Navigate between tabs (wraps around)
+   - ?: Open shortcuts help panel
+   - Esc: Close dialogs / clear search
+   - Beautiful shortcuts dialog with kbd-styled elements and organized sections
+   - ⌘K hint badge in search bar
+
+2. **User Activity/Login History** (Users Tab):
+   - New `/api/users/[id]/activity` API endpoint (admin-only)
+   - Expandable user rows showing login activity
+   - Colored dots for login types (green=login, red=failed, dark red=lockout)
+   - Relative time formatting, compact scrollable list
+   - Visual indicator (border-l-2 emerald) on expanded row
+
+3. **Data Export for All Entities**:
+   - New `/api/projects/export` endpoint (CSV + XLSX)
+   - New `/api/users/export` endpoint (CSV + XLSX, with project_id filter)
+   - New `/api/departments/export` endpoint (CSV + XLSX, with project_id filter)
+   - Export dropdown buttons added to Projects, Users, Departments tabs
+   - Settings tab "数据导出" card with centralized export for all 4 entities
+
+4. **Enhanced Settings Tab**:
+   - "数据导出" card with 4 export buttons (设备/项目/用户/单位) each with CSV/XLSX dropdown
+   - "最近操作" quick stats row (4 colored cards with recent activity)
+   - Enhanced About card with 8 tech stack badges (Next.js 16, React 19, Prisma, SQLite, etc.)
+   - Hover animations on all cards
+
+5. **UI Micro-Details Polish**:
+   - Tooltip system on all action buttons across 5 tab components
+   - Enhanced empty states with icon containers, helpful text, and action buttons
+   - Record count badges next to tab titles (项目列表, 用户列表, 单位列表, 设备列表)
+   - Enhanced table row hover with emerald left border animation (dark mode compatible)
+   - Dashboard stat card hover:scale-[1.02] and active:scale-[0.98] effects
+   - "最近更新" timestamp badge and refresh button in header with spinning animation
+
+Stage Summary:
+- Critical 500 error fixed (tabs reference before initialization)
+- All Dialog accessibility warnings fixed
+- Keyboard shortcuts system fully operational
+- User activity/login history panel added
+- Data export for all entities (projects, users, departments) in CSV + XLSX
+- Settings tab significantly enhanced with export, stats, and tech badges
+- Comprehensive UI polish with tooltips, empty states, count badges, animations
+- All lint checks passing with zero errors
+- All QA tests passing via agent-browser
+- Dev server stable and running (200 status on all routes)
+- Console completely clean (no warnings, no errors)
+
+Current Project Status:
+- **Production-ready and feature-rich** - 9 tabs, full CRUD, batch import/export, backup/restore, analytics, keyboard shortcuts, user activity tracking
+- **Excellent UI/UX** - micro-animations, tooltips, empty states, dark mode, responsive design, print support, keyboard navigation
+- **Well-architected** - modular component structure, auth middleware, type-safe APIs, accessibility compliant
+- **Stable** - zero console errors/warnings, all features tested and working
+
+Unresolved issues / risks:
+- No WebSocket real-time updates for device submissions
+- Department model lacks unique constraint on (projectId, name)
+- Could add user session management (view active sessions, force logout)
+- Could add PDF report generation
+- Could add customizable dashboard (drag-and-drop widget layout)
+- Performance optimization for large datasets (virtualized tables, server-side pagination)
+- Could add more API rate limiting
+
+Recommended next steps:
+- Add WebSocket for real-time device submission notifications
+- Add user session management (view active sessions, force logout)
+- Add PDF report generation for devices
+- Add customizable dashboard layout
+- Performance optimization: virtualized tables, server-side pagination
+- Add API rate limiting
+- Add more chart types (network topology, geographic distribution)
+- Add device timeline/history view (track changes over time)

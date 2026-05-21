@@ -1,6 +1,6 @@
 'use client';
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 
@@ -27,6 +27,7 @@ export function ConfirmDialog({ open, onOpenChange, title, message, onConfirm, l
             )}
             {title}
           </DialogTitle>
+          <DialogDescription className="sr-only">{message}</DialogDescription>
         </DialogHeader>
         <p className="text-sm text-muted-foreground py-2">{message}</p>
         <DialogFooter className="gap-2">

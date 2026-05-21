@@ -19,7 +19,7 @@ import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { Monitor, Pencil, Trash2, Eye, AlertTriangle, Search, Download, Upload, RefreshCw,
   CheckCircle2, XCircle, Copy, Loader2, ChevronLeft, ChevronRight,
-  Server, Cpu, HardDrive, Network, Wifi, Users, Globe, FileText, KeyRound, Plus, Inbox } from 'lucide-react';
+  Server, Cpu, HardDrive, Network, Wifi, Users, Globe, FileText, KeyRound, Plus, Inbox, ScrollText } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const LOG_TYPE_COLORS: Record<string, string> = {
@@ -144,11 +144,15 @@ export function LogsTab() {
                   </TableRow>
                 ))}
                 {(!data?.items || data.items.length === 0) && (
-                  <TableRow><TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                    <div className="flex flex-col items-center gap-2">
-                      <Inbox className="w-10 h-10 text-muted-foreground/30" />
-                      <p>暂无日志记录</p>
-                      <p className="text-xs">系统操作将自动记录在此处</p>
+                  <TableRow><TableCell colSpan={7} className="py-16">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center">
+                        <ScrollText className="w-8 h-8 text-muted-foreground/30" />
+                      </div>
+                      <div className="text-center">
+                        <p className="text-sm font-medium text-muted-foreground">暂无日志记录</p>
+                        <p className="text-xs text-muted-foreground/70 mt-1">系统操作将自动记录在此处</p>
+                      </div>
                     </div>
                   </TableCell></TableRow>
                 )}

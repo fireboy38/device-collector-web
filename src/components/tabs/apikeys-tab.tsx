@@ -7,7 +7,7 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,11 +15,11 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { Progress } from '@/components/ui/progress';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { Monitor, Pencil, Trash2, Eye, AlertTriangle, Search, Download, Upload, RefreshCw,
   CheckCircle2, XCircle, Copy, Loader2, ChevronLeft, ChevronRight,
-  Server, Cpu, HardDrive, Network, Wifi, Users, Globe, FileText, KeyRound, Plus } from 'lucide-react';
+  Server, Cpu, HardDrive, Network, Wifi, Users, Globe, FileText, KeyRound, Plus, Shield } from 'lucide-react';
 
 export function ApiKeysTab() {
   const qc = useQueryClient();
@@ -158,19 +158,43 @@ export function ApiKeysTab() {
                     <TableCell className="hidden md:table-cell max-w-[160px] truncate text-sm text-muted-foreground">{k.description || '-'}</TableCell>
                     <TableCell className="hidden lg:table-cell text-xs text-muted-foreground">{k.lastUsedAt ? formatDate(k.lastUsedAt) : '-'}</TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700" onClick={() => setDeleteItem(k)}>
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                      <TooltipProvider delayDuration={300}>
+                      <div className="flex gap-1">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyKey(k.apiKey)}>
+                              <Copy className="w-3.5 h-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="text-xs">复制</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700" onClick={() => setDeleteItem(k)}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="text-xs">删除</TooltipContent>
+                        </Tooltip>
+                      </div>
+                      </TooltipProvider>
                     </TableCell>
                   </TableRow>
                 ))}
                 {(!keys || keys.length === 0) && (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-12">
-                      <div className="flex flex-col items-center gap-2 text-center">
-                        <KeyRound className="w-10 h-10 text-muted-foreground/30" />
-                        <p className="text-sm font-medium">暂无 API Key</p>
-                        <p className="text-xs text-muted-foreground">点击创建按钮生成新的 API Key</p>
+                    <TableCell colSpan={8} className="py-16">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center">
+                          <Shield className="w-8 h-8 text-muted-foreground/30" />
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm font-medium text-muted-foreground">暂无 API Key</p>
+                          <p className="text-xs text-muted-foreground/70 mt-1">点击创建按钮生成新的 API Key</p>
+                        </div>
+                        <Button variant="outline" size="sm" className="mt-2" onClick={() => setShowAdd(true)}>
+                          <Plus className="w-3.5 h-3.5 mr-1" />创建 API Key
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -189,6 +213,7 @@ export function ApiKeysTab() {
               <KeyRound className="w-5 h-5 text-emerald-600" />
               创建 API Key
             </DialogTitle>
+            <DialogDescription className="sr-only">创建新的API密钥用于接口访问认证</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
