@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Loader2, KeyRound, Search, Download, Upload } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, KeyRound, Search, Download, Upload, Building2 } from 'lucide-react';
 
 interface BatchResult {
   success: number;
@@ -246,8 +246,12 @@ export function DepartmentsTab() {
                 ))}
                 {(!departments || departments.length === 0) && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      暂无数据
+                    <TableCell colSpan={7} className="py-12">
+                      <div className="flex flex-col items-center gap-2 text-center">
+                        <Building2 className="w-10 h-10 text-muted-foreground/30" />
+                        <p className="text-sm font-medium">暂无单位</p>
+                        <p className="text-xs text-muted-foreground">点击添加单位按钮创建新单位</p>
+                      </div>
                     </TableCell>
                   </TableRow>
                 )}

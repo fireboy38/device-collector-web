@@ -19,7 +19,8 @@ import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { Monitor, Pencil, Trash2, Eye, AlertTriangle, Search, Download, Upload, RefreshCw,
   CheckCircle2, XCircle, Copy, Loader2, ChevronLeft, ChevronRight,
-  Server, Cpu, HardDrive, Network, Wifi, Users, Globe, FileText, KeyRound, Plus } from 'lucide-react';
+  Server, Cpu, HardDrive, Network, Wifi, Users, Globe, FileText, KeyRound, Plus, Inbox } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const LOG_TYPE_COLORS: Record<string, string> = {
   USER_LOGIN: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -59,7 +60,31 @@ export function LogsTab() {
     } catch { toast.error('清空失败'); } finally { setSaving(false); }
   };
 
-  if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-emerald-600" /></div>;
+  if (isLoading) return (
+    <div className="space-y-4 pb-6">
+      <div className="flex flex-wrap gap-3 items-end">
+        <Skeleton className="h-9 w-[160px]" />
+        <Skeleton className="h-9 w-[200px]" />
+        <Skeleton className="h-9 w-[80px]" />
+        <Skeleton className="h-9 w-[80px]" />
+      </div>
+      <Card>
+        <CardContent className="p-0">
+          <div className="space-y-0">
+            {[1, 2, 3, 4, 5].map(i => (
+              <div key={i} className="flex items-center gap-4 px-4 py-3 border-b last:border-b-0">
+                <Skeleton className="h-4 w-8" />
+                <Skeleton className="h-5 w-20 rounded-full" />
+                <Skeleton className="h-4 flex-1 max-w-[200px]" />
+                <Skeleton className="h-4 w-16 hidden md:block" />
+                <Skeleton className="h-4 w-24 hidden sm:block" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 
   return (
     <div className="space-y-4 pb-6">
@@ -119,7 +144,13 @@ export function LogsTab() {
                   </TableRow>
                 ))}
                 {(!data?.items || data.items.length === 0) && (
-                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">暂无日志</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                    <div className="flex flex-col items-center gap-2">
+                      <Inbox className="w-10 h-10 text-muted-foreground/30" />
+                      <p>暂无日志记录</p>
+                      <p className="text-xs">系统操作将自动记录在此处</p>
+                    </div>
+                  </TableCell></TableRow>
                 )}
               </TableBody>
             </Table>

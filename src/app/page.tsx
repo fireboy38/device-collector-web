@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTheme } from 'next-themes';
 import { useAuthStore } from '@/store/auth';
+import { useIsMobile } from '@/hooks/use-mobile';
 import LoginPage from '@/components/login-page';
 import { DashboardTab } from '@/components/tabs/dashboard-tab';
 import { ProjectsTab } from '@/components/tabs/projects-tab';
@@ -23,10 +24,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { toast } from 'sonner';
 import {
   LayoutDashboard, FolderKanban, Users, Building2, Monitor, Globe, FileText, KeyRound,
-  LogOut, Loader2, Sun, Moon, ChevronDown, Bell, Zap, Settings,
+  LogOut, Loader2, Sun, Moon, ChevronDown, Bell, Zap, Settings, Menu,
 } from 'lucide-react';
 
 // ===== Helpers =====
@@ -49,13 +51,20 @@ function formatRelativeTime(dateStr: string): string {
 export default function HomePage() {
   const { user, checking, checkAuth, logout } = useAuthStore();
   const { theme, setTheme } = useTheme();
+  const isMobile = useIsMobile();
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showChangePwd, setShowChangePwd] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState<Array<{ id: number; type: string; title: string; time: string; read: boolean }>>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [pwdForm, setPwdForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
   const [pwdSaving, setPwdSaving] = useState(false);
+
+  const handleTabChange = useCallback((tab: string) => {
+    setActiveTab(tab);
+    setSidebarOpen(false);
+  }, []);
 
   useEffect(() => { checkAuth(); }, [checkAuth]);
   useEffect(() => { setMounted(true); }, []);
@@ -142,6 +151,18 @@ export default function HomePage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Mobile hamburger menu */}
+            {isMobile && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-emerald-100/80 hover:text-white hover:bg-white/10 h-9 w-9"
+                onClick={() => setSidebarOpen(true)}
+              >
+                <Menu className="w-5 h-5" />
+              </Button>
+            )}
+
             {/* Notification Bell */}
             <Popover>
               <PopoverTrigger asChild>
@@ -252,32 +273,95 @@ export default function HomePage() {
       {/* Animated gradient border */}
       <div className="h-[2px] bg-gradient-to-r from-transparent via-emerald-400 to-transparent opacity-60" />
 
+      {/* Mobile Sidebar Navigation */}
+      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+        <SheetContent side="left" className="w-72 p-0">
+          <SheetHeader className="bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-800 text-white p-4 -mt-4 -mx-4 mb-0">
+            <SheetTitle className="text-white flex items-center gap-2">
+              <Monitor className="w-5 h-5" />
+              设备信息采集器
+            </SheetTitle>
+            <SheetDescription className="text-emerald-100/70 text-xs">
+              导航菜单
+            </SheetDescription>
+          </SheetHeader>
+          <nav className="flex flex-col py-2">
+            {tabs.map((tab, index) => (
+              <button
+                key={tab.value}
+                onClick={() => handleTabChange(tab.value)}
+                className={`flex items-center gap-3 px-4 py-3 text-sm transition-all duration-200 animate-slide-in border-l-3 ${
+                  activeTab === tab.value
+                    ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-600 dark:border-emerald-400 font-medium'
+                    : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground border-transparent'
+                }`}
+                style={{ animationDelay: `${index * 30}ms` }}
+              >
+                <tab.icon className={`w-4.5 h-4.5 ${
+                  activeTab === tab.value ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'
+                }`} />
+                {tab.label}
+                {activeTab === tab.value && (
+                  <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                )}
+              </button>
+            ))}
+          </nav>
+          <Separator />
+          <div className="p-4">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>v2.0 · 在线</span>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
       {/* Tab Navigation */}
       <div className="bg-card border-b shadow-sm">
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="bg-transparent h-12 gap-0 p-0 overflow-x-auto w-full">
-              {tabs.map(tab => (
-                <TabsTrigger
-                  key={tab.value}
-                  value={tab.value}
-                  className="data-[state=active]:text-emerald-700 dark:data-[state=active]:text-emerald-400 data-[state=active]:border-b-2 data-[state=active]:border-emerald-600 dark:data-[state=active]:border-emerald-400 rounded-none px-3 sm:px-4 h-12 text-sm gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <tab.icon className="w-4 h-4" />
-                  <span className="hidden sm:inline">{tab.label}</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
+          <Tabs value={activeTab} onValueChange={handleTabChange}>
+            {/* Desktop horizontal tabs - hidden on mobile */}
+            {!isMobile && (
+              <TabsList className="bg-transparent h-12 gap-0 p-0 overflow-x-auto w-full">
+                {tabs.map(tab => (
+                  <TabsTrigger
+                    key={tab.value}
+                    value={tab.value}
+                    className="data-[state=active]:text-emerald-700 dark:data-[state=active]:text-emerald-400 data-[state=active]:border-b-2 data-[state=active]:border-emerald-600 dark:data-[state=active]:border-emerald-400 rounded-none px-3 sm:px-4 h-12 text-sm gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <tab.icon className="w-4 h-4" />
+                    <span>{tab.label}</span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            )}
 
-            <TabsContent value="dashboard" className="mt-6 animate-fade-in"><DashboardTab /></TabsContent>
-            <TabsContent value="projects" className="mt-6 animate-fade-in"><ProjectsTab /></TabsContent>
-            <TabsContent value="users" className="mt-6 animate-fade-in"><UsersTab /></TabsContent>
-            <TabsContent value="departments" className="mt-6 animate-fade-in"><DepartmentsTab /></TabsContent>
-            <TabsContent value="devices" className="mt-6 animate-fade-in"><DevicesTab /></TabsContent>
-            <TabsContent value="ipmap" className="mt-6 animate-fade-in"><IpMapTab /></TabsContent>
-            <TabsContent value="logs" className="mt-6 animate-fade-in"><LogsTab /></TabsContent>
-            <TabsContent value="apikeys" className="mt-6 animate-fade-in"><ApiKeysTab /></TabsContent>
-            <TabsContent value="settings" className="mt-6 animate-fade-in"><SettingsTab /></TabsContent>
+            {/* Mobile: compact tab bar with icons only */}
+            {isMobile && (
+              <TabsList className="bg-transparent h-11 gap-0 p-0 overflow-x-auto w-full flex">
+                {tabs.map(tab => (
+                  <TabsTrigger
+                    key={tab.value}
+                    value={tab.value}
+                    className="data-[state=active]:text-emerald-700 dark:data-[state=active]:text-emerald-400 data-[state=active]:border-b-2 data-[state=active]:border-emerald-600 dark:data-[state=active]:border-emerald-400 rounded-none px-2 h-11 text-xs gap-1 text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+                  >
+                    <tab.icon className="w-4 h-4" />
+                    <span className="truncate max-w-[48px]">{tab.label.replace('管理', '').replace('列表', '').replace('分布', '').replace('概览', '')}</span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            )}
+
+            <TabsContent value="dashboard" className="mt-4 sm:mt-6 animate-fade-in"><DashboardTab /></TabsContent>
+            <TabsContent value="projects" className="mt-4 sm:mt-6 animate-fade-in"><ProjectsTab /></TabsContent>
+            <TabsContent value="users" className="mt-4 sm:mt-6 animate-fade-in"><UsersTab /></TabsContent>
+            <TabsContent value="departments" className="mt-4 sm:mt-6 animate-fade-in"><DepartmentsTab /></TabsContent>
+            <TabsContent value="devices" className="mt-4 sm:mt-6 animate-fade-in"><DevicesTab /></TabsContent>
+            <TabsContent value="ipmap" className="mt-4 sm:mt-6 animate-fade-in"><IpMapTab /></TabsContent>
+            <TabsContent value="logs" className="mt-4 sm:mt-6 animate-fade-in"><LogsTab /></TabsContent>
+            <TabsContent value="apikeys" className="mt-4 sm:mt-6 animate-fade-in"><ApiKeysTab /></TabsContent>
+            <TabsContent value="settings" className="mt-4 sm:mt-6 animate-fade-in"><SettingsTab /></TabsContent>
           </Tabs>
         </div>
       </div>

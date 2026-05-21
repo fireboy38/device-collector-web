@@ -8,6 +8,10 @@ export async function GET(request: NextRequest) {
     const projectId = searchParams.get('project_id');
     const deptId = searchParams.get('department_id');
     const keyword = searchParams.get('keyword')?.trim();
+    const osFilter = searchParams.get('os')?.trim();
+    const dhcpFilter = searchParams.get('dhcp')?.trim();
+    const dateFrom = searchParams.get('date_from')?.trim();
+    const dateTo = searchParams.get('date_to')?.trim();
 
     const where: Prisma.DeviceWhereInput = {};
 
@@ -22,7 +26,27 @@ export async function GET(request: NextRequest) {
         { userName: { contains: keyword } },
         { computerName: { contains: keyword } },
         { ipAddress: { contains: keyword } },
+        { macAddress: { contains: keyword } },
+        { osInfo: { contains: keyword } },
       ];
+    }
+
+    if (osFilter) {
+      where.osInfo = { contains: osFilter };
+    }
+
+    if (dhcpFilter) {
+      where.dhcpEnabled = dhcpFilter;
+    }
+
+    if (dateFrom || dateTo) {
+      where.collectedAt = {};
+      if (dateFrom) (where.collectedAt as any).gte = new Date(dateFrom);
+      if (dateTo) {
+        const toDate = new Date(dateTo);
+        toDate.setHours(23, 59, 59, 999);
+        (where.collectedAt as any).lte = toDate;
+      }
     }
 
     const devices = await db.device.findMany({

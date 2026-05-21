@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Project, User, formatDate, formatShortDate } from '@/lib/types';
+import { Project, User, formatDate, formatShortDate, formatRelativeTime } from '@/lib/types';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Loader2, KeyRound, Search, Download, Upload } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, KeyRound, Search, Download, Upload, Users } from 'lucide-react';
 
 export function UsersTab() {
   const qc = useQueryClient();
@@ -154,7 +154,9 @@ export function UsersTab() {
                   <TableHead>姓名</TableHead>
                   <TableHead>所属项目</TableHead>
                   <TableHead>角色</TableHead>
-                  <TableHead className="hidden sm:table-cell">创建时间</TableHead>
+                  <TableHead className="hidden sm:table-cell">最后登录</TableHead>
+                  <TableHead className="hidden sm:table-cell">登录次数</TableHead>
+                  <TableHead className="hidden md:table-cell">创建时间</TableHead>
                   <TableHead>操作</TableHead>
                 </TableRow>
               </TableHeader>
@@ -162,7 +164,18 @@ export function UsersTab() {
                 {users?.map(u => (
                   <TableRow key={u.id} className="table-row-hover">
                     <TableCell>{u.id}</TableCell>
-                    <TableCell className="font-medium">{u.username}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`inline-block w-2 h-2 rounded-full shrink-0 ${
+                            u.lastLoginAt && (Date.now() - new Date(u.lastLoginAt).getTime()) < 5 * 60 * 1000
+                              ? 'bg-emerald-500 animate-pulse'
+                              : 'bg-slate-300 dark:bg-slate-600'
+                          }`}
+                        />
+                        {u.username}
+                      </div>
+                    </TableCell>
                     <TableCell>{u.displayName || '-'}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="text-[10px]">{u.projectName || '未关联'}</Badge>
@@ -180,6 +193,14 @@ export function UsersTab() {
                       </Badge>
                     </TableCell>
                     <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
+                      {u.lastLoginAt ? formatRelativeTime(u.lastLoginAt) : '从未登录'}
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      <Badge variant="outline" className="text-[10px] bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/30 dark:text-teal-400 dark:border-teal-800">
+                        {u.loginCount ?? 0} 次
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                       {formatShortDate(u.createdAt)}
                     </TableCell>
                     <TableCell>
@@ -224,8 +245,12 @@ export function UsersTab() {
                 ))}
                 {(!users || users.length === 0) && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      暂无数据
+                    <TableCell colSpan={9} className="py-12">
+                      <div className="flex flex-col items-center gap-2 text-center">
+                        <Users className="w-10 h-10 text-muted-foreground/30" />
+                        <p className="text-sm font-medium">暂无用户</p>
+                        <p className="text-xs text-muted-foreground">点击添加用户按钮创建新用户</p>
+                      </div>
                     </TableCell>
                   </TableRow>
                 )}

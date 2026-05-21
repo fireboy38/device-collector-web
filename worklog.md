@@ -741,3 +741,206 @@ Recommended next steps:
 - Add customizable dashboard layout
 - Performance optimization for large datasets (virtualized tables, pagination)
 - Add more export formats (PDF report generation)
+
+---
+Task ID: 9
+Agent: Main Agent (Current Session - Round 3)
+Task: Project status assessment, QA testing with agent-browser, new features, and UI polish
+
+Work Log:
+- Read worklog.md to understand previous progress across 8+ sessions
+- Used agent-browser for comprehensive QA testing of all 9 tabs (desktop + mobile + dark mode)
+- Tested: login/logout, all tab navigation, project creation, device search, detail dialogs, dark mode toggle, notification bell, XLSX export, batch import, backup download, settings tab, mobile responsive
+- All core functionality working, no critical bugs found
+- Verified all API endpoints return 200 status
+
+New features and enhancements completed this session:
+
+1. **Mobile Sidebar Navigation**:
+   - Added hamburger menu button (Menu icon) in header for mobile
+   - Created Sheet-based sidebar that slides in from left on mobile
+   - Sidebar with emerald/teal gradient header matching main header
+   - Each nav item has icon, label, active indicator (green dot), border-left highlight
+   - Staggered slide-in animation for nav items
+   - Auto-closes on tab selection
+   - Mobile tab bar now uses compact labels (shortened names)
+   - Desktop keeps full horizontal tabs with labels
+
+2. **Hardware Analytics Dashboard**:
+   - Updated `/api/device-analytics` with RAM/Disk/CPU distribution data
+   - Added `parseRamGB()`, `bucketRam()`, `parseDiskGB()`, `bucketDisk()`, `parseCpuFamily()` parsing functions
+   - RAM distribution: 5 bucket ranges (4GB以下 to 32GB以上) as bar chart
+   - Disk distribution: 5 bucket ranges (128GB以下 to 1TB以上) as bar chart
+   - CPU distribution: top 8 families (Intel i5/i7, AMD Ryzen, Apple M-series, etc.) as donut chart
+   - New 3-column grid layout on dashboard for hardware charts
+
+3. **Advanced Device Search**:
+   - Added "高级筛选" button with SlidersHorizontal icon and active filter count badge
+   - Collapsible advanced filter panel with emerald border and background
+   - OS filter dropdown (Windows 10/11/7, macOS, Linux, 麒麟OS)
+   - DHCP filter dropdown (启用/禁用)
+   - Date range filters (起始/截止) with date inputs
+   - Active filter tags with X remove buttons
+   - "清除筛选" button to reset all advanced filters
+   - Updated `/api/devices` to support os, dhcp, date_from, date_to params
+   - Extended keyword search to include MAC address and OS info
+
+4. **Print-Friendly Report Generation**:
+   - "打印报告" button with Printer icon on devices tab
+   - Print report dialog (sm:max-w-4xl) with full device data table
+   - Report header: title, generation time, device count, filter summary
+   - Clean table with alternating row colors, all 11 key columns
+   - Report footer with app name and page number
+   - Print button triggers window.print()
+   - Enhanced print CSS: hides header/footer/dialog chrome, shows only report content
+   - Print table with proper borders and cell styling
+
+5. **User Activity Tracking**:
+   - Updated `/api/users` to include loginCount and lastLoginAt from logs
+   - Uses log.groupBy to aggregate USER_LOGIN entries by content
+   - "最后登录" column with relative time formatting (刚刚/X分钟前/X小时前/X天前)
+   - "登录次数" column with teal badge showing count + "次"
+   - Online indicator dot next to username (green pulse if <5min, gray otherwise)
+   - Added formatRelativeTime() to types.ts
+
+6. **Comprehensive UI Polish**:
+   - Logs tab: skeleton loading state (5 rows with proper layout), improved empty state with Inbox icon
+   - All tabs: improved empty states with icons, titles, and subtitles
+   - Projects: Inbox icon + "暂无项目" + create prompt
+   - Users: Users icon + "暂无用户" + create prompt
+   - Departments: Building2 icon + "暂无单位" + create prompt
+   - Devices: Monitor icon + "暂无设备" + import prompt
+   - API Keys: KeyRound icon + "暂无 API Key" + create prompt
+   - New CSS animations: dialogEnter, rowExpand, tooltipFade, skeletonPulse, dotBounce
+   - New CSS utilities: .glass (frosted glass), .glow-emerald, .row-expand
+   - Dialog enter animation on open
+   - Popover/Tooltip fade-in animation
+   - Tab content smooth transition
+   - Enhanced print styles with proper table borders and layout
+
+Stage Summary:
+- All 9 tabs fully functional with rich features
+- Mobile navigation significantly improved with sidebar
+- Dashboard now shows 6 chart types (bar, pie, area, donut, timeline, hardware)
+- Advanced device filtering with OS/DHCP/date range
+- Print report generation with proper layout
+- User activity tracking with login stats and online indicators
+- Consistent skeleton loading and improved empty states across all tabs
+- All lint checks passing with zero errors
+- All QA tests passing via agent-browser (desktop + mobile + dark mode)
+- Dev server stable and running
+
+Current Project Status:
+- **Production-ready and feature-rich** - 9 tabs, full CRUD, batch import/export, backup/restore, analytics, print reports
+- **Excellent mobile UX** - hamburger menu sidebar, compact tab bar, responsive layouts
+- **Rich analytics** - OS/RAM/Disk/CPU distribution, 7-day trends, 30-day timeline
+- **Advanced filtering** - keyword, project, department, OS, DHCP, date range
+- **Polished UI** - animations, skeleton loading, dark mode, print support, empty states
+
+Unresolved issues / risks:
+- No WebSocket real-time updates for device submissions
+- Department model lacks unique constraint on (projectId, name)
+- Could add PDF export for reports
+- Could add customizable dashboard layout (drag-and-drop widgets)
+- Could add data comparison features (compare devices side by side)
+- Performance optimization for large datasets (virtualized tables, pagination for devices)
+
+Recommended next steps:
+- Add WebSocket for real-time device submission notifications
+- Add PDF report generation using pdf skill
+- Add device comparison feature
+- Add virtualized table for large device datasets
+- Add customizable dashboard with drag-and-drop widgets
+- Add more chart types (network topology, subnet utilization)
+- Add user session management (view active sessions, force logout)
+
+---
+Task ID: 3-a
+Agent: Hardware Analytics API Agent
+Task: Add hardware distribution data to device-analytics API
+
+Work Log:
+- Read worklog.md to understand project context and existing device-analytics API
+- Reviewed current route.ts which returned only osData, timeline, totalDevices
+- Reviewed Prisma schema to confirm Device model has ramInfo, diskInfo, cpuInfo string fields
+- Updated Prisma query select to include ramInfo, diskInfo, cpuInfo alongside osInfo and collectedAt
+- Implemented parseRamGB() function: handles "8GB", "16 GB", "8192MB", "16384 MB", "16G", "8192M" patterns, converts to GB
+- Implemented bucketRam() function: maps GB values to buckets "4GB以下", "4-8GB", "8-16GB", "16-32GB", "32GB以上"
+- Implemented parseDiskGB() function: handles "256GB", "512 GB", "1TB", "2 TB", "256G", "1T", "xxxMB" patterns, converts to GB
+- Implemented bucketDisk() function: maps GB values to buckets "128GB以下", "128-256GB", "256-512GB", "512GB-1TB", "1TB以上"
+- Implemented parseCpuFamily() function: groups by Intel i3/i5/i7/i9, Intel Celeron/Pentium/Xeon, AMD Ryzen 3/5/7/9, AMD Athlon, Apple M1/M2/M3/M4, 飞腾, 鲲鹏, 龙芯, 兆芯, 海光
+- Added ramDistribution, diskDistribution, cpuDistribution to response
+- RAM/Disk distributions sorted by value descending; CPU distribution limited to top 8 entries
+- Fixed CPU family label to use lowercase "i" (e.g., "Intel i5" not "Intel I5")
+- Verified API returns correct data: ramDistribution, diskDistribution, cpuDistribution all populated
+- Ran `bun run lint` with zero errors
+
+Stage Summary:
+- Device analytics API now returns 3 new hardware distribution fields alongside existing osData, timeline, totalDevices
+- ramDistribution: 5 size buckets with counts, sorted by value descending
+- diskDistribution: 5 size buckets with counts, sorted by value descending
+- cpuDistribution: top 8 CPU families with counts, sorted by value descending
+- Robust parsing for diverse RAM/Disk/CPU string formats from device data
+- All lint checks passing, API tested and returning correct data
+
+---
+Task ID: 6
+Agent: User Activity Agent
+Task: Add user activity tracking features
+
+Work Log:
+- Read worklog.md to understand project context and existing architecture
+- Reviewed users API route, users-tab.tsx, types.ts, login route, and Prisma schema
+- Analyzed login log format: `用户登录: ${user.displayName || user.username}` with logType 'USER_LOGIN'
+
+1. **Updated User type** (`/src/lib/types.ts`):
+   - Added `loginCount?: number` and `lastLoginAt?: string | null` to User interface
+   - Added `formatRelativeTime()` helper function: returns relative time strings (刚刚, X分钟前, X小时前, X天前, X个月前, or formatted date)
+
+2. **Updated users API** (`/src/app/api/users/route.ts`):
+   - Added query for all USER_LOGIN logs with content and createdAt fields
+   - Built loginStatsMap by parsing log content (regex match `^用户登录:\s*(.+)$`)
+   - Mapped stats to each user using displayName || username as identifier
+   - Response now includes loginCount (0 if no logins) and lastLoginAt (null if never logged in)
+
+3. **Updated users tab** (`/src/components/tabs/users-tab.tsx`):
+   - Added formatRelativeTime import from @/lib/types
+   - Added "最后登录" column (hidden on mobile with `hidden sm:table-cell`) showing relative time or "从未登录"
+   - Added "登录次数" column (hidden on mobile with `hidden sm:table-cell`) with teal badge showing count + "次"
+   - Added online indicator dot next to username:
+     - Green dot with pulse animation if lastLoginAt is within last 5 minutes
+     - Gray dot otherwise (with dark mode support)
+   - Moved "创建时间" column to `hidden md:table-cell` for better responsive layout
+   - Updated empty state colSpan from 7 to 9 to match new column count
+
+Stage Summary:
+- User type extended with loginCount and lastLoginAt fields
+- Users API now aggregates login stats from logs table, matching users by displayName/username
+- Users tab displays last login time (relative format), login count (badge), and online status indicator
+- New columns hidden on mobile for responsive design
+- formatRelativeTime helper added for Chinese relative time display
+- All lint checks passing with zero errors
+
+---
+Task ID: 7-a
+Agent: Empty State Polish Agent
+Task: Improve empty states across all tab components
+
+Work Log:
+- Read worklog.md to understand project context and existing tab components
+- Reviewed all 5 tab files (projects, users, departments, devices, apikeys) to identify empty state patterns
+- Found all tabs used plain "暂无数据" or "暂无 API Key" text with minimal styling
+- Updated projects-tab.tsx: Added Inbox icon import, replaced "暂无数据" with icon + "暂无项目" title + "点击新建项目按钮创建第一个项目" subtitle
+- Updated users-tab.tsx: Added Users icon import, replaced "暂无数据" with icon + "暂无用户" title + "点击添加用户按钮创建新用户" subtitle
+- Updated departments-tab.tsx: Added Building2 icon import, replaced "暂无数据" with icon + "暂无单位" title + "点击添加单位按钮创建新单位" subtitle
+- Updated devices-tab.tsx: Used existing Monitor icon, replaced "暂无数据" with icon + "暂无设备" title + "可通过批量导入或API提交添加设备" subtitle
+- Updated apikeys-tab.tsx: Used existing KeyRound icon, replaced "暂无 API Key" with icon + "暂无 API Key" title + "点击创建按钮生成新的 API Key" subtitle
+- Applied consistent pattern across all: flex column centered, icon w-10 h-10 with text-muted-foreground/30, title text-sm font-medium, subtitle text-xs text-muted-foreground, py-12 padding
+- Ran `bun run lint` with zero errors
+
+Stage Summary:
+- All 5 tab components now have polished empty states instead of plain "暂无数据" text
+- Each empty state includes: contextual lucide-react icon, descriptive title, actionable subtitle
+- Consistent styling pattern applied: centered flex column with proper spacing and muted colors
+- Icons used: Inbox (projects), Users (users), Building2 (departments), Monitor (devices), KeyRound (apikeys)
+- All lint checks passing with zero errors

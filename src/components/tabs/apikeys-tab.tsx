@@ -165,7 +165,15 @@ export function ApiKeysTab() {
                   </TableRow>
                 ))}
                 {(!keys || keys.length === 0) && (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">暂无 API Key</TableCell></TableRow>
+                  <TableRow>
+                    <TableCell colSpan={8} className="py-12">
+                      <div className="flex flex-col items-center gap-2 text-center">
+                        <KeyRound className="w-10 h-10 text-muted-foreground/30" />
+                        <p className="text-sm font-medium">暂无 API Key</p>
+                        <p className="text-xs text-muted-foreground">点击创建按钮生成新的 API Key</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
                 )}
               </TableBody>
             </Table>

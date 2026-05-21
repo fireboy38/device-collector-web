@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Monitor, CheckCircle2, Building2, Users, TrendingUp, BarChart3, ChartPie, Server, Clock, Database, Cpu, LogIn } from 'lucide-react';
+import { Monitor, CheckCircle2, Building2, Users, TrendingUp, BarChart3, ChartPie, Server, Clock, Database, Cpu, LogIn, HardDrive, MemoryStick } from 'lucide-react';
 import {
   BarChart as RechartsBarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
   PieChart as RechartsPieChart, Pie, Legend, AreaChart as RechartsAreaChart, Area,
@@ -25,6 +25,9 @@ interface DeviceAnalytics {
   osData: { name: string; value: number }[];
   timeline: { date: string; count: number }[];
   totalDevices: number;
+  ramDistribution: { name: string; value: number }[];
+  diskDistribution: { name: string; value: number }[];
+  cpuDistribution: { name: string; value: number }[];
 }
 
 function formatUptime(seconds: number): string {
@@ -484,6 +487,110 @@ export function DashboardTab() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ===== Hardware Analytics Row (RAM + Disk + CPU) ===== */}
+      {analyticsData && (analyticsData.ramDistribution.length > 0 || analyticsData.diskDistribution.length > 0 || analyticsData.cpuDistribution.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* RAM Distribution */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <MemoryStick className="w-4 h-4 text-cyan-600" />
+                内存分布
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {analyticsData.ramDistribution.length > 0 ? (
+                <ResponsiveContainer width="100%" height={220}>
+                  <RechartsBarChart data={analyticsData.ramDistribution} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                    <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                    <Tooltip formatter={(value: number) => [`${value} 台`, '设备数']} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                    <Bar dataKey="value" name="设备数" radius={[6, 6, 0, 0]} maxBarSize={40}>
+                      {analyticsData.ramDistribution.map((_, index) => (
+                        <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </RechartsBarChart>
+                </ResponsiveContainer>
+              ) : (
+                <p className="text-center text-muted-foreground py-8">暂无内存数据</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Disk Distribution */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <HardDrive className="w-4 h-4 text-amber-600" />
+                硬盘分布
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {analyticsData.diskDistribution.length > 0 ? (
+                <ResponsiveContainer width="100%" height={220}>
+                  <RechartsBarChart data={analyticsData.diskDistribution} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                    <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                    <Tooltip formatter={(value: number) => [`${value} 台`, '设备数']} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                    <Bar dataKey="value" name="设备数" radius={[6, 6, 0, 0]} maxBarSize={40}>
+                      {analyticsData.diskDistribution.map((_, index) => (
+                        <Cell key={index} fill={CHART_COLORS[(index + 2) % CHART_COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </RechartsBarChart>
+                </ResponsiveContainer>
+              ) : (
+                <p className="text-center text-muted-foreground py-8">暂无硬盘数据</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* CPU Distribution */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Cpu className="w-4 h-4 text-emerald-600" />
+                处理器分布
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {analyticsData.cpuDistribution.length > 0 ? (
+                <ResponsiveContainer width="100%" height={220}>
+                  <RechartsPieChart>
+                    <Pie
+                      data={analyticsData.cpuDistribution}
+                      cx="50%"
+                      cy="45%"
+                      outerRadius={70}
+                      innerRadius={40}
+                      dataKey="value"
+                      paddingAngle={2}
+                    >
+                      {analyticsData.cpuDistribution.map((_, index) => (
+                        <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number, name: string) => [`${value} 台`, name]} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                    <Legend
+                      verticalAlign="bottom"
+                      height={36}
+                      formatter={(value: string) => (
+                        <span className="text-xs text-slate-600 dark:text-slate-400">{value}</span>
+                      )}
+                    />
+                  </RechartsPieChart>
+                </ResponsiveContainer>
+              ) : (
+                <p className="text-center text-muted-foreground py-8">暂无处理器数据</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* ===== Bottom Section: Project Cards + Recent Records ===== */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">

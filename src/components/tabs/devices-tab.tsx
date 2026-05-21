@@ -19,7 +19,8 @@ import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { Monitor, Pencil, Trash2, Eye, AlertTriangle, Search, Download, Upload, RefreshCw,
   CheckCircle2, XCircle, Copy, Loader2, ChevronLeft, ChevronRight,
-  Server, Cpu, HardDrive, Network, Wifi, Users, Globe, FileText, KeyRound, Plus, ChevronDown } from 'lucide-react';
+  Server, Cpu, HardDrive, Network, Wifi, Users, Globe, FileText, KeyRound, Plus, ChevronDown,
+  Filter, X, SlidersHorizontal, Printer } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 export function DevicesTab() {
@@ -27,6 +28,12 @@ export function DevicesTab() {
   const [filterProject, setFilterProject] = useState('');
   const [filterDept, setFilterDept] = useState('');
   const [keyword, setKeyword] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showPrintReport, setShowPrintReport] = useState(false);
+  const [filterOs, setFilterOs] = useState('');
+  const [filterDhcp, setFilterDhcp] = useState('');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
   const { data: projects } = useQuery<Project[]>({ queryKey: ['projects'], queryFn: () => fetch('/api/projects').then(r => r.json()) });
   const { data: departments } = useQuery<Department[]>({
     queryKey: ['departments', filterProject],
@@ -34,12 +41,16 @@ export function DevicesTab() {
     enabled: !!filterProject && filterProject !== 'all',
   });
   const { data: devices, isLoading } = useQuery<Device[]>({
-    queryKey: ['devices', filterProject, filterDept, keyword],
+    queryKey: ['devices', filterProject, filterDept, keyword, filterOs, filterDhcp, filterDateFrom, filterDateTo],
     queryFn: () => {
       const params = new URLSearchParams();
       if (filterProject && filterProject !== 'all') params.set('project_id', filterProject);
       if (filterDept && filterDept !== 'all') params.set('department_id', filterDept);
       if (keyword) params.set('keyword', keyword);
+      if (filterOs) params.set('os', filterOs);
+      if (filterDhcp) params.set('dhcp', filterDhcp);
+      if (filterDateFrom) params.set('date_from', filterDateFrom);
+      if (filterDateTo) params.set('date_to', filterDateTo);
       return fetch(`/api/devices?${params}`).then(r => r.json());
     },
   });
@@ -147,6 +158,16 @@ export function DevicesTab() {
     } catch { toast.error('导入失败'); } finally { setBatchImporting(false); }
   };
 
+  // Count active filters
+  const activeFilterCount = [filterOs, filterDhcp, filterDateFrom, filterDateTo].filter(Boolean).length;
+
+  const clearAdvancedFilters = () => {
+    setFilterOs('');
+    setFilterDhcp('');
+    setFilterDateFrom('');
+    setFilterDateTo('');
+  };
+
   const deviceFields = [
     { key: 'departmentId', label: '所属单位ID', type: 'number' },
     { key: 'userName', label: '使用人' }, { key: 'userPhone', label: '联系电话' }, { key: 'userPosition', label: '安装位置' },
@@ -162,51 +183,150 @@ export function DevicesTab() {
   return (
     <div className="space-y-4 pb-6">
       {/* Filters */}
-      <div className="flex flex-wrap gap-3 items-end">
-        <div className="space-y-1">
-          <Label className="text-xs">项目筛选</Label>
-          <Select value={filterProject} onValueChange={v => { setFilterProject(v); setFilterDept(''); }}>
-            <SelectTrigger className="w-[160px]"><SelectValue placeholder="全部项目" /></SelectTrigger>
-            <SelectContent><SelectItem value="all">全部项目</SelectItem>{projects?.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">单位筛选</Label>
-          <Select value={filterDept} onValueChange={setFilterDept}>
-            <SelectTrigger className="w-[160px]"><SelectValue placeholder="全部单位" /></SelectTrigger>
-            <SelectContent><SelectItem value="all">全部单位</SelectItem>{departments?.map(d => <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">关键词搜索</Label>
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input className="pl-8 w-[200px]" placeholder="姓名/电脑名/IP" value={keyword} onChange={e => setKeyword(e.target.value)} />
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-3 items-end">
+          <div className="space-y-1">
+            <Label className="text-xs">项目筛选</Label>
+            <Select value={filterProject} onValueChange={v => { setFilterProject(v); setFilterDept(''); }}>
+              <SelectTrigger className="w-[160px]"><SelectValue placeholder="全部项目" /></SelectTrigger>
+              <SelectContent><SelectItem value="all">全部项目</SelectItem>{projects?.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">单位筛选</Label>
+            <Select value={filterDept} onValueChange={setFilterDept}>
+              <SelectTrigger className="w-[160px]"><SelectValue placeholder="全部单位" /></SelectTrigger>
+              <SelectContent><SelectItem value="all">全部单位</SelectItem>{departments?.map(d => <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">关键词搜索</Label>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input className="pl-8 w-[200px]" placeholder="姓名/电脑名/IP/MAC" value={keyword} onChange={e => setKeyword(e.target.value)} />
+            </div>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              variant={showAdvanced ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className={showAdvanced ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+            >
+              <SlidersHorizontal className="w-4 h-4 mr-1" />
+              高级筛选
+              {activeFilterCount > 0 && (
+                <Badge className="ml-1.5 h-5 min-w-[20px] px-1 bg-white/20 text-white border-0 text-[10px]">{activeFilterCount}</Badge>
+              )}
+            </Button>
+            <Button variant="outline" size="sm" onClick={checkDuplicates}><AlertTriangle className="w-4 h-4 mr-1" />查重</Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm"><Download className="w-4 h-4 mr-1" />导出<ChevronDown className="w-3 h-3 ml-0.5" /></Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <a href={`/api/devices/export?format=csv${filterProject && filterProject !== 'all' ? `&project_id=${filterProject}` : ''}`} download className="cursor-pointer">
+                    <FileText className="w-4 h-4 mr-2" />导出 CSV
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href={`/api/devices/export?format=xlsx${filterProject && filterProject !== 'all' ? `&project_id=${filterProject}` : ''}`} download className="cursor-pointer">
+                    <FileText className="w-4 h-4 mr-2" />导出 XLSX
+                  </a>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button variant="outline" size="sm" onClick={() => setShowPrintReport(true)}><Printer className="w-4 h-4 mr-1" />打印报告</Button>
+            <Button variant="outline" size="sm" onClick={() => { setShowBatchImport(true); setBatchResult(null); setBatchFile(null); setBatchProjectId(''); setBatchDeptId(''); }}>
+              <Upload className="w-4 h-4 mr-1" />批量导入
+            </Button>
           </div>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" size="sm" onClick={checkDuplicates}><AlertTriangle className="w-4 h-4 mr-1" />查重</Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm"><Download className="w-4 h-4 mr-1" />导出<ChevronDown className="w-3 h-3 ml-0.5" /></Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
-                <a href={`/api/devices/export?format=csv${filterProject && filterProject !== 'all' ? `&project_id=${filterProject}` : ''}`} download className="cursor-pointer">
-                  <FileText className="w-4 h-4 mr-2" />导出 CSV
-                </a>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <a href={`/api/devices/export?format=xlsx${filterProject && filterProject !== 'all' ? `&project_id=${filterProject}` : ''}`} download className="cursor-pointer">
-                  <FileText className="w-4 h-4 mr-2" />导出 XLSX
-                </a>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button variant="outline" size="sm" onClick={() => { setShowBatchImport(true); setBatchResult(null); setBatchFile(null); setBatchProjectId(''); setBatchDeptId(''); }}>
-            <Upload className="w-4 h-4 mr-1" />批量导入
-          </Button>
-        </div>
+
+        {/* Advanced Filters Panel */}
+        {showAdvanced && (
+          <Card className="border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 animate-fade-in">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                  <Filter className="w-4 h-4" />
+                  高级筛选条件
+                </div>
+                {activeFilterCount > 0 && (
+                  <Button variant="ghost" size="sm" className="text-xs h-7 text-muted-foreground hover:text-foreground" onClick={clearAdvancedFilters}>
+                    <X className="w-3 h-3 mr-1" />清除筛选
+                  </Button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">操作系统</Label>
+                  <Select value={filterOs} onValueChange={setFilterOs}>
+                    <SelectTrigger><SelectValue placeholder="全部系统" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部系统</SelectItem>
+                      <SelectItem value="Windows 10">Windows 10</SelectItem>
+                      <SelectItem value="Windows 11">Windows 11</SelectItem>
+                      <SelectItem value="Windows 7">Windows 7</SelectItem>
+                      <SelectItem value="macOS">macOS</SelectItem>
+                      <SelectItem value="Linux">Linux</SelectItem>
+                      <SelectItem value="麒麟">麒麟OS</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">DHCP 状态</Label>
+                  <Select value={filterDhcp} onValueChange={setFilterDhcp}>
+                    <SelectTrigger><SelectValue placeholder="全部" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部</SelectItem>
+                      <SelectItem value="是">DHCP 启用</SelectItem>
+                      <SelectItem value="否">DHCP 禁用</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">采集日期 (起始)</Label>
+                  <Input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} className="text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">采集日期 (截止)</Label>
+                  <Input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} className="text-sm" />
+                </div>
+              </div>
+              {/* Active filter tags */}
+              {activeFilterCount > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-emerald-200/50 dark:border-emerald-800/50">
+                  {filterOs && filterOs !== 'all' && (
+                    <Badge variant="secondary" className="text-[10px] gap-1 pr-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+                      系统: {filterOs}
+                      <button onClick={() => setFilterOs('')} className="hover:bg-emerald-200 dark:hover:bg-emerald-800/50 rounded p-0.5"><X className="w-3 h-3" /></button>
+                    </Badge>
+                  )}
+                  {filterDhcp && filterDhcp !== 'all' && (
+                    <Badge variant="secondary" className="text-[10px] gap-1 pr-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+                      DHCP: {filterDhcp === '是' ? '启用' : '禁用'}
+                      <button onClick={() => setFilterDhcp('')} className="hover:bg-emerald-200 dark:hover:bg-emerald-800/50 rounded p-0.5"><X className="w-3 h-3" /></button>
+                    </Badge>
+                  )}
+                  {filterDateFrom && (
+                    <Badge variant="secondary" className="text-[10px] gap-1 pr-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+                      从: {filterDateFrom}
+                      <button onClick={() => setFilterDateFrom('')} className="hover:bg-emerald-200 dark:hover:bg-emerald-800/50 rounded p-0.5"><X className="w-3 h-3" /></button>
+                    </Badge>
+                  )}
+                  {filterDateTo && (
+                    <Badge variant="secondary" className="text-[10px] gap-1 pr-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+                      至: {filterDateTo}
+                      <button onClick={() => setFilterDateTo('')} className="hover:bg-emerald-200 dark:hover:bg-emerald-800/50 rounded p-0.5"><X className="w-3 h-3" /></button>
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Duplicate Results */}
@@ -270,7 +390,17 @@ export function DevicesTab() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {(!devices || devices.length === 0) && <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground">暂无数据</TableCell></TableRow>}
+                {(!devices || devices.length === 0) && (
+                  <TableRow>
+                    <TableCell colSpan={11} className="py-12">
+                      <div className="flex flex-col items-center gap-2 text-center">
+                        <Monitor className="w-10 h-10 text-muted-foreground/30" />
+                        <p className="text-sm font-medium">暂无设备</p>
+                        <p className="text-xs text-muted-foreground">可通过批量导入或API提交添加设备</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
@@ -458,6 +588,95 @@ export function DevicesTab() {
       </Dialog>
 
       <ConfirmDialog open={!!deleteItem} onOpenChange={v => !v && setDeleteItem(null)} title="删除设备" message={`确定要删除设备"${deleteItem?.computerName || deleteItem?.id}"吗？`} onConfirm={handleDelete} loading={saving} />
+
+      {/* Print Report Dialog */}
+      <Dialog open={showPrintReport} onOpenChange={setShowPrintReport}>
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Printer className="w-5 h-5 text-emerald-600" />
+              设备信息报告
+            </DialogTitle>
+          </DialogHeader>
+          <div id="print-report" className="space-y-4 print-area">
+            {/* Report Header */}
+            <div className="border-b pb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold">设备信息采集报告</h2>
+                  <p className="text-xs text-muted-foreground mt-1">生成时间：{new Date().toLocaleString('zh-CN')}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-medium">设备信息采集器 v2.0</p>
+                  <p className="text-xs text-muted-foreground">共 {devices?.length || 0} 台设备</p>
+                </div>
+              </div>
+              {/* Filter summary */}
+              <div className="flex flex-wrap gap-2 mt-3">
+                {filterProject && filterProject !== 'all' && (
+                  <Badge variant="outline" className="text-[10px]">项目: {projects?.find(p => String(p.id) === filterProject)?.name || filterProject}</Badge>
+                )}
+                {filterDept && filterDept !== 'all' && (
+                  <Badge variant="outline" className="text-[10px]">单位: {departments?.find(d => String(d.id) === filterDept)?.name || filterDept}</Badge>
+                )}
+                {keyword && <Badge variant="outline" className="text-[10px]">关键词: {keyword}</Badge>}
+                {filterOs && filterOs !== 'all' && <Badge variant="outline" className="text-[10px]">系统: {filterOs}</Badge>}
+                {filterDhcp && filterDhcp !== 'all' && <Badge variant="outline" className="text-[10px]">DHCP: {filterDhcp === '是' ? '启用' : '禁用'}</Badge>}
+              </div>
+            </div>
+
+            {/* Device Table for Print */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse print-table">
+                <thead>
+                  <tr className="border-b-2 border-slate-300 dark:border-slate-600">
+                    <th className="text-left py-2 px-2 font-semibold text-xs">使用人</th>
+                    <th className="text-left py-2 px-2 font-semibold text-xs">电脑名称</th>
+                    <th className="text-left py-2 px-2 font-semibold text-xs">IP地址</th>
+                    <th className="text-left py-2 px-2 font-semibold text-xs">MAC地址</th>
+                    <th className="text-left py-2 px-2 font-semibold text-xs">所属项目</th>
+                    <th className="text-left py-2 px-2 font-semibold text-xs">所属单位</th>
+                    <th className="text-left py-2 px-2 font-semibold text-xs">操作系统</th>
+                    <th className="text-left py-2 px-2 font-semibold text-xs">CPU</th>
+                    <th className="text-left py-2 px-2 font-semibold text-xs">内存</th>
+                    <th className="text-left py-2 px-2 font-semibold text-xs">硬盘</th>
+                    <th className="text-left py-2 px-2 font-semibold text-xs">采集时间</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {devices?.map((d, i) => (
+                    <tr key={d.id} className={i % 2 === 0 ? 'bg-slate-50 dark:bg-slate-800/30' : ''}>
+                      <td className="py-1.5 px-2 text-xs font-medium">{d.userName}</td>
+                      <td className="py-1.5 px-2 text-xs font-mono">{d.computerName || '-'}</td>
+                      <td className="py-1.5 px-2 text-xs font-mono">{d.ipAddress || '-'}</td>
+                      <td className="py-1.5 px-2 text-xs font-mono">{d.macAddress || '-'}</td>
+                      <td className="py-1.5 px-2 text-xs">{d.projectName || '-'}</td>
+                      <td className="py-1.5 px-2 text-xs">{d.departmentName || '-'}</td>
+                      <td className="py-1.5 px-2 text-xs">{d.osInfo || '-'}</td>
+                      <td className="py-1.5 px-2 text-xs">{d.cpuInfo || '-'}</td>
+                      <td className="py-1.5 px-2 text-xs">{d.ramInfo || '-'}</td>
+                      <td className="py-1.5 px-2 text-xs">{d.diskInfo || '-'}</td>
+                      <td className="py-1.5 px-2 text-xs text-muted-foreground">{formatDate(d.collectedAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Report Footer */}
+            <div className="border-t pt-3 text-xs text-muted-foreground flex justify-between">
+              <span>设备信息采集器 · 管理端</span>
+              <span>第 1 页</span>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowPrintReport(false)}>关闭</Button>
+            <Button onClick={() => window.print()} className="bg-emerald-600 hover:bg-emerald-700">
+              <Printer className="w-4 h-4 mr-1" />打印
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

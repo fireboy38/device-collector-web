@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Loader2, KeyRound, Search, Download, Upload } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, KeyRound, Search, Download, Upload, Inbox } from 'lucide-react';
 
 export function ProjectsTab() {
   const qc = useQueryClient();
@@ -167,8 +167,12 @@ export function ProjectsTab() {
                 ))}
                 {(!projects || projects.length === 0) && (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                      暂无数据
+                    <TableCell colSpan={9} className="py-12">
+                      <div className="flex flex-col items-center gap-2 text-center">
+                        <Inbox className="w-10 h-10 text-muted-foreground/30" />
+                        <p className="text-sm font-medium">暂无项目</p>
+                        <p className="text-xs text-muted-foreground">点击新建项目按钮创建第一个项目</p>
+                      </div>
                     </TableCell>
                   </TableRow>
                 )}

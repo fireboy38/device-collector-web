@@ -17,15 +17,46 @@ export async function GET(request: NextRequest) {
       include: { project: true },
     });
 
-    const result = users.map(u => ({
-      id: u.id,
-      username: u.username,
-      displayName: u.displayName,
-      projectId: u.projectId,
-      projectName: u.project?.name || null,
-      role: u.role,
-      createdAt: u.createdAt,
-    }));
+    // Aggregate login stats from logs table
+    const loginLogs = await db.log.findMany({
+      where: { logType: 'USER_LOGIN' },
+      select: { content: true, createdAt: true },
+    });
+
+    // Build a map of user identifier -> { count, lastLoginAt }
+    const loginStatsMap = new Map<string, { count: number; lastLoginAt: Date }>();
+    for (const log of loginLogs) {
+      // Content format: "用户登录: displayName" or "用户登录: username"
+      const match = log.content.match(/^用户登录:\s*(.+)$/);
+      if (match) {
+        const identifier = match[1].trim();
+        const existing = loginStatsMap.get(identifier);
+        if (existing) {
+          existing.count += 1;
+          if (log.createdAt > existing.lastLoginAt) {
+            existing.lastLoginAt = log.createdAt;
+          }
+        } else {
+          loginStatsMap.set(identifier, { count: 1, lastLoginAt: log.createdAt });
+        }
+      }
+    }
+
+    const result = users.map(u => {
+      const identifier = u.displayName || u.username;
+      const stats = loginStatsMap.get(identifier);
+      return {
+        id: u.id,
+        username: u.username,
+        displayName: u.displayName,
+        projectId: u.projectId,
+        projectName: u.project?.name || null,
+        role: u.role,
+        createdAt: u.createdAt,
+        loginCount: stats?.count ?? 0,
+        lastLoginAt: stats?.lastLoginAt?.toISOString() ?? null,
+      };
+    });
 
     return NextResponse.json(result);
   } catch (error) {
