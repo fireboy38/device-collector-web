@@ -23,7 +23,7 @@ import {
   CheckCircle2, XCircle, Copy, Loader2, ChevronLeft, ChevronRight, Server, Cpu, HardDrive,
   Network, Wifi
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, PieChart, Pie, Legend } from 'recharts';
 
 // ===== Types =====
 interface Project { id: number; name: string; code: string | null; description: string | null; createdAt: string; userCount?: number; deptCount?: number; deviceCount?: number; }
@@ -68,8 +68,26 @@ function ConfirmDialog({ open, onOpenChange, title, message, onConfirm, loading 
 export default function HomePage() {
   const { user, checking, checkAuth, logout } = useAuthStore();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [showChangePwd, setShowChangePwd] = useState(false);
+  const [pwdForm, setPwdForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
+  const [pwdSaving, setPwdSaving] = useState(false);
 
   useEffect(() => { checkAuth(); }, [checkAuth]);
+
+  const handleChangePwd = async () => {
+    if (!pwdForm.oldPassword || !pwdForm.newPassword) { toast.error('请填写完整'); return; }
+    if (pwdForm.newPassword !== pwdForm.confirmPassword) { toast.error('两次密码不一致'); return; }
+    if (pwdForm.newPassword.length < 6) { toast.error('新密码至少6位'); return; }
+    setPwdSaving(true);
+    try {
+      const res = await fetch('/api/change-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oldPassword: pwdForm.oldPassword, newPassword: pwdForm.newPassword }) });
+      const data = await res.json();
+      if (!res.ok) { toast.error(data.error); return; }
+      toast.success('密码修改成功');
+      setShowChangePwd(false);
+      setPwdForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
+    } catch { toast.error('修改失败'); } finally { setPwdSaving(false); }
+  };
 
   if (checking) {
     return (
@@ -100,6 +118,9 @@ export default function HomePage() {
               {user.displayName || user.username}
               <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0">{user.role === 'admin' ? '管理员' : '用户'}</Badge>
             </span>
+            <Button variant="ghost" size="sm" className="text-emerald-100 hover:text-white hover:bg-white/10" onClick={() => setShowChangePwd(true)}>
+              <KeyRound className="w-4 h-4 mr-1" />改密
+            </Button>
             <Button variant="ghost" size="sm" className="text-emerald-100 hover:text-white hover:bg-white/10" onClick={logout}>
               <LogOut className="w-4 h-4 mr-1" />登出
             </Button>
@@ -145,6 +166,22 @@ export default function HomePage() {
       <footer className="mt-auto border-t bg-white py-3 text-center text-xs text-slate-400">
         设备信息采集器 · 管理端 v2.0 · Powered by Next.js
       </footer>
+
+      {/* Change Password Dialog */}
+      <Dialog open={showChangePwd} onOpenChange={setShowChangePwd}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>修改密码</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2"><Label>旧密码</Label><Input type="password" value={pwdForm.oldPassword} onChange={e => setPwdForm(f => ({ ...f, oldPassword: e.target.value }))} placeholder="请输入当前密码" /></div>
+            <div className="space-y-2"><Label>新密码</Label><Input type="password" value={pwdForm.newPassword} onChange={e => setPwdForm(f => ({ ...f, newPassword: e.target.value }))} placeholder="至少6位" /></div>
+            <div className="space-y-2"><Label>确认新密码</Label><Input type="password" value={pwdForm.confirmPassword} onChange={e => setPwdForm(f => ({ ...f, confirmPassword: e.target.value }))} placeholder="再次输入新密码" onKeyDown={e => e.key === 'Enter' && handleChangePwd()} /></div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowChangePwd(false)}>取消</Button>
+            <Button onClick={handleChangePwd} disabled={pwdSaving} className="bg-emerald-600 hover:bg-emerald-700">{pwdSaving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}确认修改</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -156,33 +193,52 @@ function DashboardTab() {
     queryFn: () => fetch('/api/stats').then(r => r.json()),
   });
 
-  if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-emerald-600" /></div>;
+  if (isLoading) return (
+    <div className="space-y-6 pb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[1,2,3,4].map(i => (
+          <Card key={i}><CardContent className="p-5"><div className="h-20 animate-pulse bg-slate-100 rounded" /></CardContent></Card>
+        ))}
+      </div>
+      <Card><CardContent className="p-6"><div className="h-64 animate-pulse bg-slate-100 rounded" /></CardContent></Card>
+    </div>
+  );
   if (!stats) return null;
 
   const statCards = [
-    { label: '设备总数', value: stats.deviceCount, icon: Monitor, color: 'emerald' },
-    { label: '今日采集', value: stats.todayCount, icon: CheckCircle2, color: 'teal' },
-    { label: '单位数量', value: stats.deptCount, icon: Building2, color: 'cyan' },
-    { label: '用户数量', value: stats.userCount, icon: Users, color: 'amber' },
+    { label: '设备总数', value: stats.deviceCount, icon: Monitor, color: 'emerald', sub: `${stats.projectCount} 个项目` },
+    { label: '今日采集', value: stats.todayCount, icon: CheckCircle2, color: 'teal', sub: stats.todayCount > 0 ? '持续增长中' : '暂无采集' },
+    { label: '单位数量', value: stats.deptCount, icon: Building2, color: 'cyan', sub: `${stats.projectCount} 个项目下` },
+    { label: '用户数量', value: stats.userCount, icon: Users, color: 'amber', sub: '活跃用户' },
   ];
 
   const colorMap: any = {
-    emerald: 'from-emerald-500 to-emerald-600 shadow-emerald-200',
-    teal: 'from-teal-500 to-teal-600 shadow-teal-200',
-    cyan: 'from-cyan-500 to-cyan-600 shadow-cyan-200',
-    amber: 'from-amber-500 to-amber-600 shadow-amber-200',
+    emerald: 'from-emerald-500 to-emerald-600 shadow-emerald-200/50',
+    teal: 'from-teal-500 to-teal-600 shadow-teal-200/50',
+    cyan: 'from-cyan-500 to-cyan-600 shadow-cyan-200/50',
+    amber: 'from-amber-500 to-amber-600 shadow-amber-200/50',
   };
+  const bgMap: any = {
+    emerald: 'bg-emerald-50 border-emerald-100',
+    teal: 'bg-teal-50 border-teal-100',
+    cyan: 'bg-cyan-50 border-cyan-100',
+    amber: 'bg-amber-50 border-amber-100',
+  };
+
+  const pieData = stats.projectStats.map(p => ({ name: p.name, value: p.deviceCount, deptCount: p.deptCount }));
 
   return (
     <div className="space-y-6 pb-6">
+      {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {statCards.map(s => (
-          <Card key={s.label} className="overflow-hidden">
+        {statCards.map((s, i) => (
+          <Card key={s.label} className="overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow">
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">{s.label}</p>
-                  <p className="text-3xl font-bold mt-1">{s.value}</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{s.label}</p>
+                  <p className="text-3xl font-bold mt-1.5 tabular-nums">{s.value}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{s.sub}</p>
                 </div>
                 <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${colorMap[s.color]} flex items-center justify-center shadow-lg`}>
                   <s.icon className="w-6 h-6 text-white" />
@@ -193,57 +249,104 @@ function DashboardTab() {
         ))}
       </div>
 
-      <Card>
-        <CardHeader><CardTitle className="text-base">各项目设备数量分布</CardTitle></CardHeader>
-        <CardContent>
-          {stats.projectStats.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={stats.projectStats} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Bar dataKey="deviceCount" name="设备数量" radius={[6, 6, 0, 0]}>
-                  {stats.projectStats.map((_, index) => (
-                    <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          ) : <p className="text-center text-muted-foreground py-8">暂无数据</p>}
-        </CardContent>
-      </Card>
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        {/* Bar Chart */}
+        <Card className="lg:col-span-3 border-0 shadow-sm">
+          <CardHeader className="pb-2"><CardTitle className="text-base">各项目设备数量分布</CardTitle></CardHeader>
+          <CardContent>
+            {stats.projectStats.length > 0 ? (
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={stats.projectStats} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+                  <Tooltip formatter={(value: number, name: string) => [value, name === 'deviceCount' ? '设备数' : name]} />
+                  <Bar dataKey="deviceCount" name="设备数量" radius={[6, 6, 0, 0]} maxBarSize={50}>
+                    {stats.projectStats.map((_, index) => (
+                      <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : <p className="text-center text-muted-foreground py-8">暂无数据</p>}
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader><CardTitle className="text-base">最近采集记录</CardTitle></CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>使用人</TableHead>
-                <TableHead>电脑名称</TableHead>
-                <TableHead>IP地址</TableHead>
-                <TableHead>所属项目</TableHead>
-                <TableHead>采集时间</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {stats.recentDevices.map(d => (
-                <TableRow key={d.id}>
-                  <TableCell className="font-medium">{d.userName}</TableCell>
-                  <TableCell>{d.computerName || '-'}</TableCell>
-                  <TableCell className="font-mono text-sm">{d.ipAddress || '-'}</TableCell>
-                  <TableCell><Badge variant="outline">{d.projectName || '-'}</Badge></TableCell>
-                  <TableCell className="text-muted-foreground text-sm">{formatDate(d.collectedAt)}</TableCell>
+        {/* Pie Chart */}
+        <Card className="lg:col-span-2 border-0 shadow-sm">
+          <CardHeader className="pb-2"><CardTitle className="text-base">设备分布占比</CardTitle></CardHeader>
+          <CardContent>
+            {pieData.length > 0 && pieData.some(d => d.value > 0) ? (
+              <ResponsiveContainer width="100%" height={280}>
+                <PieChart>
+                  <Pie data={pieData} cx="50%" cy="45%" outerRadius={80} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={11}>
+                    {pieData.map((_, index) => (
+                      <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : <p className="text-center text-muted-foreground py-8">暂无数据</p>}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Project Stats + Recent Records */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        {/* Project Detail Cards */}
+        <Card className="lg:col-span-2 border-0 shadow-sm">
+          <CardHeader className="pb-2"><CardTitle className="text-base">项目概况</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {stats.projectStats.map((p, i) => (
+              <div key={p.id} className={`p-3 rounded-lg border ${bgMap[['emerald','teal','cyan','amber'][i % 4]]}`}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-semibold">{p.name}</span>
+                  <Badge variant="outline" className="text-[10px]">{p.code || '-'}</Badge>
+                </div>
+                <div className="flex gap-4 text-xs text-muted-foreground">
+                  <span>设备 <strong className="text-foreground">{p.deviceCount}</strong></span>
+                  <span>单位 <strong className="text-foreground">{p.deptCount}</strong></span>
+                </div>
+              </div>
+            ))}
+            {stats.projectStats.length === 0 && <p className="text-center text-muted-foreground py-4">暂无项目</p>}
+          </CardContent>
+        </Card>
+
+        {/* Recent Records */}
+        <Card className="lg:col-span-3 border-0 shadow-sm">
+          <CardHeader className="pb-2"><CardTitle className="text-base">最近采集记录</CardTitle></CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>使用人</TableHead>
+                  <TableHead>电脑名称</TableHead>
+                  <TableHead>IP地址</TableHead>
+                  <TableHead className="hidden sm:table-cell">所属项目</TableHead>
+                  <TableHead className="hidden md:table-cell">采集时间</TableHead>
                 </TableRow>
-              ))}
-              {stats.recentDevices.length === 0 && (
-                <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">暂无记录</TableCell></TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+              </TableHeader>
+              <TableBody>
+                {stats.recentDevices.map(d => (
+                  <TableRow key={d.id}>
+                    <TableCell className="font-medium">{d.userName}</TableCell>
+                    <TableCell className="text-sm">{d.computerName || '-'}</TableCell>
+                    <TableCell className="font-mono text-sm">{d.ipAddress || '-'}</TableCell>
+                    <TableCell className="hidden sm:table-cell"><Badge variant="outline" className="text-[10px]">{d.projectName || '-'}</Badge></TableCell>
+                    <TableCell className="hidden md:table-cell text-muted-foreground text-xs">{formatDate(d.collectedAt)}</TableCell>
+                  </TableRow>
+                ))}
+                {stats.recentDevices.length === 0 && (
+                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">暂无记录</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
@@ -810,17 +913,50 @@ function DevicesTab() {
       {/* View Detail Dialog */}
       <Dialog open={!!viewDevice} onOpenChange={v => !v && setViewDevice(null)}>
         <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>设备详细信息</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Monitor className="w-5 h-5 text-emerald-600" />
+              设备详细信息
+            </DialogTitle>
+          </DialogHeader>
           {viewDevice && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="col-span-2"><Badge variant="outline" className="mb-2">{viewDevice.projectName} / {viewDevice.departmentName}</Badge></div>
-              {Object.entries(detailLabels).map(([key, label]) => (
-                <div key={key} className="space-y-0.5">
-                  <p className="text-xs text-muted-foreground">{label}</p>
-                  <p className="text-sm font-medium break-all">{(viewDevice as any)[key] || '-'}</p>
+            <div className="space-y-4">
+              {/* Header Badge */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">{viewDevice.projectName || '未知项目'}</Badge>
+                <Badge variant="outline">{viewDevice.departmentName || '未知单位'}</Badge>
+                <Badge variant="secondary" className="text-xs">{formatDate(viewDevice.collectedAt)}</Badge>
+              </div>
+
+              {/* Personnel Info */}
+              <div>
+                <h4 className="text-sm font-semibold text-slate-500 mb-2 flex items-center gap-1.5"><Users className="w-3.5 h-3.5" />人员信息</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 rounded-lg p-3">
+                  {[['使用人', viewDevice.userName], ['联系电话', viewDevice.userPhone], ['安装位置', viewDevice.userPosition]].map(([l, v]) => (
+                    <div key={l}><p className="text-xs text-muted-foreground">{l}</p><p className="text-sm font-medium">{v || '-'}</p></div>
+                  ))}
                 </div>
-              ))}
-              <div className="space-y-0.5"><p className="text-xs text-muted-foreground">采集时间</p><p className="text-sm font-medium">{formatDate(viewDevice.collectedAt)}</p></div>
+              </div>
+
+              {/* Network Info */}
+              <div>
+                <h4 className="text-sm font-semibold text-slate-500 mb-2 flex items-center gap-1.5"><Wifi className="w-3.5 h-3.5" />网络信息</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 rounded-lg p-3">
+                  {[['IP地址', viewDevice.ipAddress, 'font-mono'], ['MAC地址', viewDevice.macAddress, 'font-mono'], ['DHCP', viewDevice.dhcpEnabled, ''], ['网卡', viewDevice.networkAdapter, ''], ['子网掩码', viewDevice.subnetMask, 'font-mono'], ['默认网关', viewDevice.gateway, 'font-mono'], ['DNS服务器', viewDevice.dnsServers, 'font-mono']].map(([l, v, cls]) => (
+                    <div key={l}><p className="text-xs text-muted-foreground">{l}</p><p className={`text-sm font-medium break-all ${cls}`}>{v || '-'}</p></div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Hardware Info */}
+              <div>
+                <h4 className="text-sm font-semibold text-slate-500 mb-2 flex items-center gap-1.5"><Cpu className="w-3.5 h-3.5" />硬件信息</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 rounded-lg p-3">
+                  {[['电脑名称', viewDevice.computerName], ['操作系统', viewDevice.osInfo], ['CPU', viewDevice.cpuInfo], ['内存', viewDevice.ramInfo], ['硬盘', viewDevice.diskInfo], ['主板', viewDevice.motherboardInfo], ['显卡', viewDevice.gpuInfo]].map(([l, v]) => (
+                    <div key={l}><p className="text-xs text-muted-foreground">{l}</p><p className="text-sm font-medium break-all">{v || '-'}</p></div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </DialogContent>
@@ -829,14 +965,40 @@ function DevicesTab() {
       {/* Edit Dialog */}
       <Dialog open={!!editDevice} onOpenChange={v => !v && setEditDevice(null)}>
         <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>编辑设备信息</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {deviceFields.map(f => (
-              <div key={f.key} className="space-y-1">
-                <Label className="text-xs">{f.label}</Label>
-                <Input value={editForm[f.key] || ''} onChange={e => setEditForm((prev: any) => ({ ...prev, [f.key]: e.target.value }))} />
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="w-5 h-5 text-emerald-600" />
+              编辑设备信息
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Personnel */}
+            <div>
+              <h4 className="text-sm font-semibold text-slate-500 mb-2 flex items-center gap-1.5"><Users className="w-3.5 h-3.5" />人员信息</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {deviceFields.filter(f => ['userName', 'userPhone', 'userPosition'].includes(f.key)).map(f => (
+                  <div key={f.key} className="space-y-1"><Label className="text-xs">{f.label}</Label><Input value={editForm[f.key] || ''} onChange={e => setEditForm((prev: any) => ({ ...prev, [f.key]: e.target.value }))} /></div>
+                ))}
               </div>
-            ))}
+            </div>
+            {/* Network */}
+            <div>
+              <h4 className="text-sm font-semibold text-slate-500 mb-2 flex items-center gap-1.5"><Wifi className="w-3.5 h-3.5" />网络信息</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {deviceFields.filter(f => ['computerName', 'ipAddress', 'macAddress', 'dhcpEnabled', 'networkAdapter', 'subnetMask', 'gateway', 'dnsServers'].includes(f.key)).map(f => (
+                  <div key={f.key} className="space-y-1"><Label className="text-xs">{f.label}</Label><Input value={editForm[f.key] || ''} onChange={e => setEditForm((prev: any) => ({ ...prev, [f.key]: e.target.value }))} /></div>
+                ))}
+              </div>
+            </div>
+            {/* Hardware */}
+            <div>
+              <h4 className="text-sm font-semibold text-slate-500 mb-2 flex items-center gap-1.5"><Cpu className="w-3.5 h-3.5" />硬件信息</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {deviceFields.filter(f => ['osInfo', 'cpuInfo', 'ramInfo', 'diskInfo', 'motherboardInfo', 'gpuInfo'].includes(f.key)).map(f => (
+                  <div key={f.key} className="space-y-1"><Label className="text-xs">{f.label}</Label><Input value={editForm[f.key] || ''} onChange={e => setEditForm((prev: any) => ({ ...prev, [f.key]: e.target.value }))} /></div>
+                ))}
+              </div>
+            </div>
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setEditDevice(null)}>取消</Button>
