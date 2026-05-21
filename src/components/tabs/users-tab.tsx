@@ -182,7 +182,7 @@ export function UsersTab() {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="bg-gradient-to-r from-muted/80 to-muted/40">
                   <TableHead className="w-12">ID</TableHead>
                   <TableHead>用户名</TableHead>
                   <TableHead>姓名</TableHead>
@@ -370,15 +370,15 @@ export function UsersTab() {
                   <TableRow>
                     <TableCell colSpan={9} className="py-16">
                       <div className="flex flex-col items-center gap-3">
-                        <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center">
-                          <UserCircle className="w-8 h-8 text-muted-foreground/30" />
+                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-50 to-cyan-100/50 dark:from-cyan-950/30 dark:to-cyan-900/20 flex items-center justify-center">
+                          <Users className="w-10 h-10 text-cyan-300 dark:text-cyan-700" />
                         </div>
                         <div className="text-center">
                           <p className="text-sm font-medium text-muted-foreground">暂无用户</p>
-                          <p className="text-xs text-muted-foreground/70 mt-1">点击添加用户按钮创建新用户</p>
+                          <p className="text-xs text-muted-foreground/70 mt-1">添加第一个用户开始分配权限</p>
                         </div>
-                        <Button variant="outline" size="sm" className="mt-2" onClick={() => { resetForm(); setShowAdd(true); }}>
-                          <Plus className="w-3.5 h-3.5 mr-1" />添加用户
+                        <Button variant="outline" size="sm" className="mt-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-950/30" onClick={() => { resetForm(); setShowAdd(true); }}>
+                          <Plus className="w-3.5 h-3.5 mr-1" />添加第一个用户
                         </Button>
                       </div>
                     </TableCell>

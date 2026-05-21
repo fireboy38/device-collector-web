@@ -118,7 +118,7 @@ export function ApiKeysTab() {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="bg-gradient-to-r from-muted/80 to-muted/40">
                   <TableHead className="w-12">ID</TableHead>
                   <TableHead>名称</TableHead>
                   <TableHead>API Key</TableHead>
@@ -185,14 +185,14 @@ export function ApiKeysTab() {
                   <TableRow>
                     <TableCell colSpan={8} className="py-16">
                       <div className="flex flex-col items-center gap-3">
-                        <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center">
-                          <Shield className="w-8 h-8 text-muted-foreground/30" />
+                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-950/30 dark:to-purple-900/20 flex items-center justify-center">
+                          <KeyRound className="w-10 h-10 text-purple-300 dark:text-purple-700" />
                         </div>
                         <div className="text-center">
-                          <p className="text-sm font-medium text-muted-foreground">暂无 API Key</p>
-                          <p className="text-xs text-muted-foreground/70 mt-1">点击创建按钮生成新的 API Key</p>
+                          <p className="text-sm font-medium text-muted-foreground">暂无API密钥</p>
+                          <p className="text-xs text-muted-foreground/70 mt-1">创建API Key用于接口访问认证</p>
                         </div>
-                        <Button variant="outline" size="sm" className="mt-2" onClick={() => setShowAdd(true)}>
+                        <Button variant="outline" size="sm" className="mt-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-950/30" onClick={() => setShowAdd(true)}>
                           <Plus className="w-3.5 h-3.5 mr-1" />创建 API Key
                         </Button>
                       </div>

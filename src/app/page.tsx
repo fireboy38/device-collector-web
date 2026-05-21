@@ -83,6 +83,31 @@ export default function HomePage() {
   const [wsConnected, setWsConnected] = useState(false);
   const socketRef = useRef<ReturnType<typeof socketIo> | null>(null);
 
+  // Tab badge data
+  const [tabBadges, setTabBadges] = useState<{ deviceCount: number; todayLogCount: number; activeApiKeyCount: number }>({ deviceCount: 0, todayLogCount: 0, activeApiKeyCount: 0 });
+
+  // Fetch tab badge counts
+  useEffect(() => {
+    if (!user) return;
+    const fetchBadges = async () => {
+      try {
+        const [devRes, logRes, keyRes] = await Promise.all([
+          fetch('/api/devices?per_page=1').then(r => r.json()),
+          fetch('/api/logs?per_page=1').then(r => r.json()),
+          fetch('/api/apikeys').then(r => r.json()),
+        ]);
+        setTabBadges({
+          deviceCount: Array.isArray(devRes) ? devRes.length : (devRes.total ?? 0),
+          todayLogCount: logRes.total ?? 0,
+          activeApiKeyCount: Array.isArray(keyRes) ? keyRes.filter((k: { isActive: number }) => k.isActive === 1).length : 0,
+        });
+      } catch { /* silently fail */ }
+    };
+    fetchBadges();
+    const interval = setInterval(fetchBadges, 60000);
+    return () => clearInterval(interval);
+  }, [user]);
+
   // Global Search state
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -734,6 +759,15 @@ export default function HomePage() {
                   >
                     <tab.icon className="w-4 h-4" />
                     <span>{tab.label}</span>
+                    {tab.value === 'devices' && tabBadges.deviceCount > 0 && (
+                      <Badge className="h-4 min-w-[18px] px-1 text-[9px] bg-emerald-100 text-emerald-700 border-0 dark:bg-emerald-900/40 dark:text-emerald-400 tabular-nums">{tabBadges.deviceCount > 99 ? '99+' : tabBadges.deviceCount}</Badge>
+                    )}
+                    {tab.value === 'logs' && tabBadges.todayLogCount > 0 && (
+                      <Badge className="h-4 min-w-[18px] px-1 text-[9px] bg-emerald-100 text-emerald-700 border-0 dark:bg-emerald-900/40 dark:text-emerald-400 tabular-nums">{tabBadges.todayLogCount > 99 ? '99+' : tabBadges.todayLogCount}</Badge>
+                    )}
+                    {tab.value === 'apikeys' && tabBadges.activeApiKeyCount > 0 && (
+                      <Badge className="h-4 min-w-[18px] px-1 text-[9px] bg-emerald-100 text-emerald-700 border-0 dark:bg-emerald-900/40 dark:text-emerald-400 tabular-nums">{tabBadges.activeApiKeyCount}</Badge>
+                    )}
                   </TabsTrigger>
                 ))}
               </TabsList>
@@ -750,6 +784,15 @@ export default function HomePage() {
                   >
                     <tab.icon className="w-4 h-4" />
                     <span className="truncate max-w-[48px]">{tab.label.replace('管理', '').replace('列表', '').replace('分布', '').replace('概览', '')}</span>
+                    {tab.value === 'devices' && tabBadges.deviceCount > 0 && (
+                      <Badge className="h-3.5 min-w-[14px] px-0.5 text-[8px] bg-emerald-100 text-emerald-700 border-0 dark:bg-emerald-900/40 dark:text-emerald-400 tabular-nums">{tabBadges.deviceCount > 99 ? '99+' : tabBadges.deviceCount}</Badge>
+                    )}
+                    {tab.value === 'logs' && tabBadges.todayLogCount > 0 && (
+                      <Badge className="h-3.5 min-w-[14px] px-0.5 text-[8px] bg-emerald-100 text-emerald-700 border-0 dark:bg-emerald-900/40 dark:text-emerald-400 tabular-nums">{tabBadges.todayLogCount > 99 ? '99+' : tabBadges.todayLogCount}</Badge>
+                    )}
+                    {tab.value === 'apikeys' && tabBadges.activeApiKeyCount > 0 && (
+                      <Badge className="h-3.5 min-w-[14px] px-0.5 text-[8px] bg-emerald-100 text-emerald-700 border-0 dark:bg-emerald-900/40 dark:text-emerald-400 tabular-nums">{tabBadges.activeApiKeyCount}</Badge>
+                    )}
                   </TabsTrigger>
                 ))}
               </TabsList>

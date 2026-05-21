@@ -6,13 +6,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Monitor, CheckCircle2, Building2, Users, TrendingUp, BarChart3, ChartPie, Server, Clock, Database, Cpu, LogIn, HardDrive, MemoryStick, FolderKanban, Download, Settings, ArrowRight, Zap } from 'lucide-react';
+import { Monitor, CheckCircle2, Building2, Users, TrendingUp, BarChart3, ChartPie, Server, Clock, Database, Cpu, LogIn, HardDrive, MemoryStick, FolderKanban, Download, Settings, ArrowRight, Zap, Activity, MonitorSmartphone, Pencil, Trash2, AlertTriangle, KeyRound, Shield } from 'lucide-react';
 import {
-  BarChart as RechartsBarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
+  BarChart as RechartsBarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid, Cell,
   PieChart as RechartsPieChart, Pie, Legend, AreaChart as RechartsAreaChart, Area,
 } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // ===== System Info Types =====
 interface SystemInfoData {
@@ -30,6 +32,60 @@ interface DeviceAnalytics {
   ramDistribution: { name: string; value: number }[];
   diskDistribution: { name: string; value: number }[];
   cpuDistribution: { name: string; value: number }[];
+}
+
+// ===== Activity Types =====
+interface ActivityItem {
+  id: number;
+  type: string;
+  icon: string;
+  color: string;
+  label: string;
+  description: string;
+  operator: string | null;
+  ipAddress: string | null;
+  timestamp: string;
+}
+
+// Activity icon map
+const activityIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  logIn: LogIn,
+  shieldOff: Shield,
+  lock: Shield,
+  monitor: Monitor,
+  pencil: Pencil,
+  trash: Trash2,
+  building: Building2,
+  key: KeyRound,
+  alertTriangle: AlertTriangle,
+  checkCircle: CheckCircle2,
+  settings: Settings,
+  activity: Activity,
+};
+
+// Activity color map
+const activityColorMap: Record<string, string> = {
+  emerald: 'bg-emerald-500',
+  red: 'bg-red-500',
+  amber: 'bg-amber-500',
+  teal: 'bg-teal-500',
+  purple: 'bg-purple-500',
+  slate: 'bg-slate-400',
+};
+
+function formatRelativeTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffSeconds < 60) return '刚刚';
+  if (diffMinutes < 60) return `${diffMinutes}分钟前`;
+  if (diffHours < 24) return `${diffHours}小时前`;
+  if (diffDays < 30) return `${diffDays}天前`;
+  return date.toLocaleDateString('zh-CN');
 }
 
 function formatUptime(seconds: number): string {
@@ -239,6 +295,11 @@ export function DashboardTab({ onTabChange }: DashboardTabProps) {
     queryFn: () => fetch('/api/device-analytics').then(r => r.json()),
   });
 
+  const { data: activityData } = useQuery<{ activities: ActivityItem[] }>({
+    queryKey: ['activity'],
+    queryFn: () => fetch('/api/activity').then(r => r.json()),
+  });
+
   if (isLoading) return <DashboardSkeleton />;
   if (!stats) return null;
 
@@ -319,7 +380,7 @@ export function DashboardTab({ onTabChange }: DashboardTabProps) {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
-                  <Tooltip content={<BarChartTooltip />} />
+                  <RechartsTooltip content={<BarChartTooltip />} />
                   <Bar dataKey="deviceCount" name="设备数量" radius={[6, 6, 0, 0]} maxBarSize={50}>
                     {stats.projectStats.map((_, index) => (
                       <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
@@ -359,7 +420,7 @@ export function DashboardTab({ onTabChange }: DashboardTabProps) {
                       <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <RechartsTooltip />
                   <Legend
                     verticalAlign="bottom"
                     height={36}
@@ -397,7 +458,7 @@ export function DashboardTab({ onTabChange }: DashboardTabProps) {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="dateLabel" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
-                <Tooltip content={<AreaChartTooltip />} />
+                <RechartsTooltip content={<AreaChartTooltip />} />
                 <Area
                   type="monotone"
                   dataKey="count"
@@ -441,7 +502,7 @@ export function DashboardTab({ onTabChange }: DashboardTabProps) {
                     ))}
                     <DonutCenterLabel cx="50%" cy="50%" total={analyticsData.totalDevices} />
                   </Pie>
-                  <Tooltip
+                  <RechartsTooltip
                     formatter={(value: number, name: string) => [`${value} 台`, name]}
                     contentStyle={{ fontSize: 12, borderRadius: 8 }}
                   />
@@ -479,7 +540,7 @@ export function DashboardTab({ onTabChange }: DashboardTabProps) {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
                   <YAxis type="category" dataKey="dateLabel" tick={{ fontSize: 11 }} width={45} />
-                  <Tooltip content={<TimelineTooltip />} />
+                  <RechartsTooltip content={<TimelineTooltip />} />
                   <Bar dataKey="count" name="设备数量" radius={[0, 6, 6, 0]} maxBarSize={28}>
                     {timelineChartData.map((_, index) => (
                       <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
@@ -512,7 +573,7 @@ export function DashboardTab({ onTabChange }: DashboardTabProps) {
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="name" tick={{ fontSize: 10 }} />
                     <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                    <Tooltip formatter={(value: number) => [`${value} 台`, '设备数']} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                    <RechartsTooltip formatter={(value: number) => [`${value} 台`, '设备数']} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
                     <Bar dataKey="value" name="设备数" radius={[6, 6, 0, 0]} maxBarSize={40}>
                       {analyticsData.ramDistribution.map((_, index) => (
                         <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
@@ -541,7 +602,7 @@ export function DashboardTab({ onTabChange }: DashboardTabProps) {
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="name" tick={{ fontSize: 10 }} />
                     <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                    <Tooltip formatter={(value: number) => [`${value} 台`, '设备数']} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                    <RechartsTooltip formatter={(value: number) => [`${value} 台`, '设备数']} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
                     <Bar dataKey="value" name="设备数" radius={[6, 6, 0, 0]} maxBarSize={40}>
                       {analyticsData.diskDistribution.map((_, index) => (
                         <Cell key={index} fill={CHART_COLORS[(index + 2) % CHART_COLORS.length]} />
@@ -580,7 +641,7 @@ export function DashboardTab({ onTabChange }: DashboardTabProps) {
                         <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value: number, name: string) => [`${value} 台`, name]} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                    <RechartsTooltip formatter={(value: number, name: string) => [`${value} 台`, name]} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
                     <Legend
                       verticalAlign="bottom"
                       height={36}
@@ -625,6 +686,77 @@ export function DashboardTab({ onTabChange }: DashboardTabProps) {
               </Button>
             ))}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* ===== Recent Activity Timeline ===== */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Activity className="w-4 h-4 text-emerald-600" />
+            最近活动
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {activityData && activityData.activities.length > 0 ? (
+            <ScrollArea className="max-h-[320px]">
+              <div className="relative">
+                {/* Timeline line */}
+                <div className="absolute left-[11px] top-2 bottom-2 w-px bg-gradient-to-b from-emerald-300 via-emerald-200 to-transparent dark:from-emerald-700 dark:via-emerald-800" />
+                <div className="space-y-0">
+                  {activityData.activities.map((item, index) => {
+                    const IconComponent = activityIconMap[item.icon] || Activity;
+                    const dotColor = activityColorMap[item.color] || 'bg-slate-400';
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex items-start gap-3 py-2.5 px-1 hover:bg-muted/30 rounded-lg transition-colors animate-fade-in"
+                        style={{ animationDelay: `${index * 50}ms` }}
+                      >
+                        {/* Timeline dot */}
+                        <div className="relative z-10 mt-0.5 flex-shrink-0">
+                          <TooltipProvider delayDuration={300}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className={`w-[22px] h-[22px] rounded-full ${dotColor} flex items-center justify-center shadow-sm`}>
+                                  <IconComponent className="w-3 h-3 text-white" />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="right" className="text-xs">{item.label}</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className={`text-[9px] px-1.5 py-0 border-0 ${
+                              item.color === 'emerald' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                              item.color === 'red' ? 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                              item.color === 'amber' ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                              item.color === 'teal' ? 'bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' :
+                              item.color === 'purple' ? 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
+                              'bg-slate-50 text-slate-700 dark:bg-slate-800/50 dark:text-slate-400'
+                            }`}>
+                              {item.label}
+                            </Badge>
+                            <span className="text-[10px] text-muted-foreground ml-auto whitespace-nowrap">
+                              {formatRelativeTime(item.timestamp)}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5 truncate">{item.description}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </ScrollArea>
+          ) : (
+            <div className="flex flex-col items-center gap-2 py-8">
+              <Activity className="w-8 h-8 text-muted-foreground/30" />
+              <p className="text-xs text-muted-foreground">暂无活动记录</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

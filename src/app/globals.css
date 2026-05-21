@@ -121,7 +121,7 @@
   }
 }
 
-/* Custom scrollbar */
+/* Better scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -138,6 +138,12 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: oklch(0.55 0.05 155);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.7 0.03 155) transparent;
 }
 
 /* Smooth page transitions */
@@ -213,6 +219,7 @@
 .table-row-hover {
   transition: background-color 0.2s ease, border-left-color 0.2s ease, transform 0.1s ease;
   border-left: 3px solid transparent;
+  cursor: pointer;
 }
 
 .table-row-hover:hover {
@@ -220,9 +227,30 @@
   border-left-color: oklch(0.508 0.144 163.4);
 }
 
+.table-row-hover.selected,
+.table-row-hover[data-selected="true"] {
+  background-color: oklch(0.95 0.02 155 / 0.6);
+  border-left-color: oklch(0.508 0.144 163.4);
+}
+
 .dark .table-row-hover:hover {
   background-color: oklch(0.25 0.015 155);
   border-left-color: oklch(0.608 0.144 163.4);
+}
+
+.dark .table-row-hover.selected,
+.dark .table-row-hover[data-selected="true"] {
+  background-color: oklch(0.22 0.02 155 / 0.5);
+  border-left-color: oklch(0.608 0.144 163.4);
+}
+
+/* Subtle gradient on table headers */
+.table-header-gradient th {
+  background: linear-gradient(to bottom, oklch(0.96 0.01 155), oklch(0.93 0.01 155));
+}
+
+.dark .table-header-gradient th {
+  background: linear-gradient(to bottom, oklch(0.22 0.015 155), oklch(0.20 0.015 155));
 }
 
 /* Card hover lift effect */
@@ -263,12 +291,21 @@
 
 /* Dialog enter animation */
 @keyframes dialogEnter {
-  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
+@keyframes dialogExit {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to { opacity: 0; transform: scale(0.96) translateY(8px); }
+}
+
 [data-state="open"] > [data-slot="dialog-content"] {
-  animation: dialogEnter 0.2s ease-out;
+  animation: dialogEnter 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-state="closed"] > [data-slot="dialog-content"] {
+  animation: dialogExit 0.15s ease-in;
 }
 
 /* Row expand animation */

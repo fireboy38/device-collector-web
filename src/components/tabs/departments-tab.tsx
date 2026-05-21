@@ -213,7 +213,7 @@ export function DepartmentsTab() {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="bg-gradient-to-r from-muted/80 to-muted/40">
                   <TableHead className="w-12">ID</TableHead>
                   <TableHead>所属项目</TableHead>
                   <TableHead>单位名称</TableHead>
@@ -279,15 +279,15 @@ export function DepartmentsTab() {
                   <TableRow>
                     <TableCell colSpan={7} className="py-16">
                       <div className="flex flex-col items-center gap-3">
-                        <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center">
-                          <Building className="w-8 h-8 text-muted-foreground/30" />
+                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-teal-50 to-teal-100/50 dark:from-teal-950/30 dark:to-teal-900/20 flex items-center justify-center">
+                          <Building2 className="w-10 h-10 text-teal-300 dark:text-teal-700" />
                         </div>
                         <div className="text-center">
                           <p className="text-sm font-medium text-muted-foreground">暂无单位</p>
-                          <p className="text-xs text-muted-foreground/70 mt-1">点击添加单位按钮创建新单位</p>
+                          <p className="text-xs text-muted-foreground/70 mt-1">添加第一个单位开始组织设备</p>
                         </div>
-                        <Button variant="outline" size="sm" className="mt-2" onClick={() => { resetForm(); setShowAdd(true); }}>
-                          <Plus className="w-3.5 h-3.5 mr-1" />添加单位
+                        <Button variant="outline" size="sm" className="mt-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-950/30" onClick={() => { resetForm(); setShowAdd(true); }}>
+                          <Plus className="w-3.5 h-3.5 mr-1" />添加第一个单位
                         </Button>
                       </div>
                     </TableCell>

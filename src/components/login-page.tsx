@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useSyncExternalStore } from 'react';
 import { useTheme } from 'next-themes';
 import { useAuthStore } from '@/store/auth';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Monitor, Eye, EyeOff, Loader2, Shield, Lock, AlertTriangle, Sun, Moon, Cpu, Database, Wifi, Server, BarChart3, TrendingUp } from 'lucide-react';
+import { toast } from 'sonner';
 
 // Floating particle component
 function FloatingParticles() {
@@ -103,26 +104,34 @@ function FloatingCircles() {
 export default function LoginPage() {
   const { login, loading } = useAuthStore();
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('dc_login_username') || '';
+    }
+    return '';
+  });
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('dc_remember_me') !== 'false';
+    }
+    return true;
+  });
   const [error, setError] = useState('');
   const [locked, setLocked] = useState(false);
   const [lockedUntil, setLockedUntil] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
   const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null);
 
-  useEffect(() => { setMounted(true); }, []);
+  // Hydration-safe mounted check using useSyncExternalStore
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
-  // Load saved username on mount
-  const [initialUsername] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('dc_login_username') || '';
-    }
-    return '';
-  });
-  useEffect(() => { setUsername(initialUsername); }, [initialUsername]);
+  // Load saved username on mount - using initial state above
 
   // Countdown timer for lockout
   useEffect(() => {
@@ -163,7 +172,13 @@ export default function LoginPage() {
       }
       setError(result.error || '登录失败');
     } else {
-      localStorage.setItem('dc_login_username', username);
+      if (rememberMe) {
+        localStorage.setItem('dc_login_username', username);
+        localStorage.setItem('dc_remember_me', 'true');
+      } else {
+        localStorage.removeItem('dc_login_username');
+        localStorage.setItem('dc_remember_me', 'false');
+      }
     }
   };
 
@@ -273,6 +288,26 @@ export default function LoginPage() {
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
+                </div>
+
+                {/* Remember me & Forgot password */}
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="h-3.5 w-3.5 rounded border-slate-600 text-emerald-500 focus:ring-emerald-500/20 accent-emerald-500 cursor-pointer"
+                    />
+                    <span className="text-xs text-slate-400 group-hover:text-slate-300 transition-colors">记住用户名</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => { toast.error('请联系管理员重置密码'); }}
+                    className="text-xs text-slate-500 hover:text-emerald-400 transition-colors"
+                  >
+                    忘记密码?
+                  </button>
                 </div>
 
                 <Button

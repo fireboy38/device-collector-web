@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 import { Monitor, Pencil, Trash2, Eye, AlertTriangle, Search, Download, Upload, RefreshCw,
   CheckCircle2, XCircle, Copy, Loader2, ChevronLeft, ChevronRight,
   Server, Cpu, HardDrive, Network, Wifi, Users, Globe, FileText, KeyRound, Plus, ChevronDown,
-  Filter, X, SlidersHorizontal, Printer, GitCompare, History, ArrowRight } from 'lucide-react';
+  Filter, X, SlidersHorizontal, Printer, GitCompare, History, ArrowRight, CircleDot } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -37,6 +37,8 @@ export function DevicesTab() {
   const [filterDhcp, setFilterDhcp] = useState('');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [selectedRowId, setSelectedRowId] = useState<number | null>(null);
   const { data: projects } = useQuery<Project[]>({ queryKey: ['projects'], queryFn: () => fetch('/api/projects').then(r => r.json()) });
   const { data: departments } = useQuery<Department[]>({
     queryKey: ['departments', filterProject],
@@ -57,6 +59,20 @@ export function DevicesTab() {
       return fetch(`/api/devices?${params}`).then(r => r.json());
     },
   });
+
+  // Derived: compute device online/offline status from collectedAt
+  const getDeviceStatus = (collectedAt: string): { online: boolean; label: string } => {
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const collected = new Date(collectedAt).getTime();
+    return collected >= thirtyDaysAgo ? { online: true, label: '在线' } : { online: false, label: '离线' };
+  };
+
+  // Filter devices by status
+  const filteredDevices = devices?.filter(d => {
+    if (!filterStatus || filterStatus === 'all') return true;
+    const status = getDeviceStatus(d.collectedAt);
+    return filterStatus === 'online' ? status.online : !status.online;
+  }) || [];
 
   const [viewDevice, setViewDevice] = useState<Device | null>(null);
   const [editDevice, setEditDevice] = useState<Device | null>(null);
@@ -171,13 +187,14 @@ export function DevicesTab() {
   };
 
   // Count active filters
-  const activeFilterCount = [filterOs, filterDhcp, filterDateFrom, filterDateTo].filter(Boolean).length;
+  const activeFilterCount = [filterOs, filterDhcp, filterDateFrom, filterDateTo, filterStatus].filter(v => v && v !== 'all').length;
 
   const clearAdvancedFilters = () => {
     setFilterOs('');
     setFilterDhcp('');
     setFilterDateFrom('');
     setFilterDateTo('');
+    setFilterStatus('');
   };
 
   const deviceFields = [
@@ -287,7 +304,18 @@ export function DevicesTab() {
                   </Button>
                 )}
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">设备状态</Label>
+                  <Select value={filterStatus} onValueChange={setFilterStatus}>
+                    <SelectTrigger><SelectValue placeholder="全部状态" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部状态</SelectItem>
+                      <SelectItem value="online">在线 (30天内)</SelectItem>
+                      <SelectItem value="offline">离线 (超过30天)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-1">
                   <Label className="text-xs">操作系统</Label>
                   <Select value={filterOs} onValueChange={setFilterOs}>
@@ -326,6 +354,12 @@ export function DevicesTab() {
               {/* Active filter tags */}
               {activeFilterCount > 0 && (
                 <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-emerald-200/50 dark:border-emerald-800/50">
+                  {filterStatus && filterStatus !== 'all' && (
+                    <Badge variant="secondary" className="text-[10px] gap-1 pr-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+                      状态: {filterStatus === 'online' ? '在线' : '离线'}
+                      <button onClick={() => setFilterStatus('')} className="hover:bg-emerald-200 dark:hover:bg-emerald-800/50 rounded p-0.5"><X className="w-3 h-3" /></button>
+                    </Badge>
+                  )}
                   {filterOs && filterOs !== 'all' && (
                     <Badge variant="secondary" className="text-[10px] gap-1 pr-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
                       系统: {filterOs}
@@ -373,9 +407,10 @@ export function DevicesTab() {
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader><TableRow>
+              <TableHeader><TableRow className="bg-gradient-to-r from-muted/80 to-muted/40">
                 <TableHead className="w-10"></TableHead>
                 <TableHead className="w-12">ID</TableHead>
+                <TableHead className="w-16">状态</TableHead>
                 <TableHead>所属项目</TableHead>
                 <TableHead>所属单位</TableHead>
                 <TableHead>使用人</TableHead>
@@ -388,8 +423,10 @@ export function DevicesTab() {
                 <TableHead>操作</TableHead>
               </TableRow></TableHeader>
               <TableBody>
-                {devices?.map(d => (
-                  <TableRow key={d.id} className="table-row-hover">
+                {filteredDevices.map(d => {
+                  const status = getDeviceStatus(d.collectedAt);
+                  return (
+                  <TableRow key={d.id} className={`table-row-hover cursor-pointer ${selectedRowId === d.id ? 'bg-emerald-50/80 dark:bg-emerald-950/30 border-l-emerald-500' : ''}`} onClick={() => setSelectedRowId(selectedRowId === d.id ? null : d.id)}>
                     <TableCell className="w-10 text-center">
                       <input
                         type="checkbox"
@@ -405,6 +442,19 @@ export function DevicesTab() {
                       />
                     </TableCell>
                     <TableCell>{d.id}</TableCell>
+                    <TableCell>
+                      <TooltipProvider delayDuration={300}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex items-center gap-1.5">
+                              <span className={`inline-block w-2.5 h-2.5 rounded-full ${status.online ? 'bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                              <span className={`text-xs ${status.online ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>{status.label}</span>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="text-xs">{status.online ? '30天内有过采集' : '超过30天未采集'}</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </TableCell>
                     <TableCell><Badge variant="outline" className="text-[10px]">{d.projectName || '-'}</Badge></TableCell>
                     <TableCell className="text-sm">{d.departmentName || '-'}</TableCell>
                     <TableCell className="font-medium">{d.userName}</TableCell>
@@ -463,18 +513,22 @@ export function DevicesTab() {
                       </TooltipProvider>
                     </TableCell>
                   </TableRow>
-                ))}
-                {(!devices || devices.length === 0) && (
+                  );
+                })}
+                {filteredDevices.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={12} className="py-16">
+                    <TableCell colSpan={13} className="py-16">
                       <div className="flex flex-col items-center gap-3">
-                        <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center">
-                          <Monitor className="w-8 h-8 text-muted-foreground/30" />
+                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-900/20 flex items-center justify-center">
+                          <Monitor className="w-10 h-10 text-emerald-300 dark:text-emerald-700" />
                         </div>
                         <div className="text-center">
-                          <p className="text-sm font-medium text-muted-foreground">暂无设备</p>
-                          <p className="text-xs text-muted-foreground/70 mt-1">可通过批量导入或API提交添加设备</p>
+                          <p className="text-sm font-medium text-muted-foreground">暂无设备数据</p>
+                          <p className="text-xs text-muted-foreground/70 mt-1">通过批量导入或API提交添加设备</p>
                         </div>
+                        <Button variant="outline" size="sm" className="mt-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-950/30" onClick={() => { setShowBatchImport(true); setBatchResult(null); setBatchFile(null); setBatchProjectId(''); setBatchDeptId(''); }}>
+                          <Plus className="w-3.5 h-3.5 mr-1" />添加第一台设备
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>

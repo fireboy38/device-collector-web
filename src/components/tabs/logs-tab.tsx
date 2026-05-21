@@ -19,7 +19,7 @@ import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { Monitor, Pencil, Trash2, Eye, AlertTriangle, Search, Download, Upload, RefreshCw,
   CheckCircle2, XCircle, Copy, Loader2, ChevronLeft, ChevronRight,
-  Server, Cpu, HardDrive, Network, Wifi, Users, Globe, FileText, KeyRound, Plus, Inbox, ScrollText } from 'lucide-react';
+  Server, Cpu, HardDrive, Network, Wifi, Users, Globe, FileText, KeyRound, Plus, Inbox, ScrollText, FileTextIcon } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const LOG_TYPE_COLORS: Record<string, string> = {
@@ -117,7 +117,7 @@ export function LogsTab() {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="bg-gradient-to-r from-muted/80 to-muted/40">
                   <TableHead className="w-12">ID</TableHead>
                   <TableHead>类型</TableHead>
                   <TableHead>内容</TableHead>
@@ -146,8 +146,8 @@ export function LogsTab() {
                 {(!data?.items || data.items.length === 0) && (
                   <TableRow><TableCell colSpan={7} className="py-16">
                     <div className="flex flex-col items-center gap-3">
-                      <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center">
-                        <ScrollText className="w-8 h-8 text-muted-foreground/30" />
+                      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-900/30 dark:to-slate-800/20 flex items-center justify-center">
+                        <FileText className="w-10 h-10 text-slate-300 dark:text-slate-600" />
                       </div>
                       <div className="text-center">
                         <p className="text-sm font-medium text-muted-foreground">暂无日志记录</p>
