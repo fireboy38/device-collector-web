@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Monitor, Eye, EyeOff, Loader2, Shield, Lock, AlertTriangle, Sun, Moon, Cpu, Database, Wifi, Server } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Monitor, Eye, EyeOff, Loader2, Shield, Lock, AlertTriangle, Sun, Moon, Cpu, Database, Wifi, Server, BarChart3, TrendingUp } from 'lucide-react';
 
 // Floating particle component
 function FloatingParticles() {
@@ -65,6 +66,35 @@ function FloatingIcons() {
         >
           <Icon className="w-16 h-16" />
         </div>
+      ))}
+    </div>
+  );
+}
+
+// Floating decorative circles
+function FloatingCircles() {
+  const circles = [
+    { size: 120, left: '5%', top: '15%', color: 'bg-emerald-500', opacity: 0.04, delay: 0, duration: 18 },
+    { size: 80, left: '85%', top: '25%', color: 'bg-teal-500', opacity: 0.05, delay: 3, duration: 22 },
+    { size: 150, left: '70%', top: '75%', color: 'bg-cyan-500', opacity: 0.03, delay: 6, duration: 20 },
+    { size: 60, left: '20%', top: '80%', color: 'bg-emerald-400', opacity: 0.05, delay: 9, duration: 16 },
+  ];
+
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {circles.map((c, i) => (
+        <div
+          key={i}
+          className={`absolute rounded-full ${c.color}`}
+          style={{
+            width: `${c.size}px`,
+            height: `${c.size}px`,
+            left: c.left,
+            top: c.top,
+            opacity: c.opacity,
+            animation: `float ${c.duration}s ease-in-out ${c.delay}s infinite`,
+          }}
+        />
       ))}
     </div>
   );
@@ -139,6 +169,12 @@ export default function LoginPage() {
 
   if (!mounted) return null;
 
+  const features = [
+    { icon: BarChart3, title: '数据采集', desc: '多维度设备信息统一采集', color: 'from-emerald-500/20 to-emerald-600/10 border-emerald-500/20' },
+    { icon: Shield, title: '安全管理', desc: '细粒度权限控制体系', color: 'from-teal-500/20 to-teal-600/10 border-teal-500/20' },
+    { icon: TrendingUp, title: '智能分析', desc: '可视化数据洞察分析', color: 'from-cyan-500/20 to-cyan-600/10 border-cyan-500/20' },
+  ];
+
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-slate-950">
       {/* Animated background */}
@@ -154,6 +190,7 @@ export default function LoginPage() {
         }} />
         <FloatingParticles />
         <FloatingIcons />
+        <FloatingCircles />
       </div>
 
       {/* Theme toggle */}
@@ -181,98 +218,120 @@ export default function LoginPage() {
           <p className="text-slate-400 text-sm mt-1">管理端登录</p>
         </div>
 
-        {/* Login Card */}
-        <Card className="bg-slate-900/70 backdrop-blur-xl border-slate-700/50 shadow-2xl">
-          <CardHeader className="pb-2" />
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Error message */}
-              {error && (
-                <div className={`flex items-center gap-2 p-3 rounded-lg text-sm ${locked ? 'bg-amber-500/10 text-amber-300 border border-amber-500/20' : 'bg-red-500/10 text-red-300 border border-red-500/20'}`}>
-                  {locked ? <Lock className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
-                  <span>{locked && countdown > 0 ? `账户已锁定，请 ${countdown} 秒后重试` : error}</span>
-                </div>
-              )}
-
-              {attemptsLeft !== null && attemptsLeft > 0 && !locked && (
-                <div className="text-amber-400 text-xs text-center">
-                  剩余尝试次数: {attemptsLeft} 次
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="username" className="text-slate-300 text-xs uppercase tracking-wider">用户名</Label>
-                <div className="relative">
-                  <Monitor className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                  <Input
-                    id="username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="请输入用户名"
-                    className="bg-slate-800/60 border-slate-600/50 text-white placeholder:text-slate-500 focus:border-emerald-500 focus:ring-emerald-500/20 pl-10"
-                    autoFocus
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-slate-300 text-xs uppercase tracking-wider">密码</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="请输入密码"
-                    className="bg-slate-800/60 border-slate-600/50 text-white placeholder:text-slate-500 pl-10 pr-10 focus:border-emerald-500 focus:ring-emerald-500/20"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <Button
-                type="submit"
-                disabled={loading || locked}
-                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-5 shadow-lg shadow-emerald-500/20 transition-all hover:shadow-emerald-500/30"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    登录中...
-                  </>
-                ) : (
-                  '登 录'
+        {/* Login Card with gradient border animation */}
+        <div className="relative rounded-xl p-[1px] bg-gradient-to-r from-emerald-500/50 via-teal-500/30 to-emerald-500/50 animate-gradient-border">
+          <Card className="bg-slate-900/90 backdrop-blur-xl border-0 shadow-2xl rounded-[11px]">
+            <CardHeader className="pb-2" />
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Error message */}
+                {error && (
+                  <div className={`flex items-center gap-2 p-3 rounded-lg text-sm ${locked ? 'bg-amber-500/10 text-amber-300 border border-amber-500/20' : 'bg-red-500/10 text-red-300 border border-red-500/20'}`}>
+                    {locked ? <Lock className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
+                    <span>{locked && countdown > 0 ? `账户已锁定，请 ${countdown} 秒后重试` : error}</span>
+                  </div>
                 )}
-              </Button>
-            </form>
 
-            {/* Demo info */}
-            <div className="mt-6 p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-lg">
-              <p className="text-xs text-slate-400 leading-relaxed">
-                💡 默认管理员账号：<span className="text-emerald-400 font-medium">admin</span> / <span className="text-emerald-400 font-medium">123456</span>
-              </p>
+                {attemptsLeft !== null && attemptsLeft > 0 && !locked && (
+                  <div className="text-amber-400 text-xs text-center">
+                    剩余尝试次数: {attemptsLeft} 次
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="username" className="text-slate-300 text-xs uppercase tracking-wider">用户名</Label>
+                  <div className="relative">
+                    <Monitor className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                    <Input
+                      id="username"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      placeholder="请输入用户名"
+                      className="bg-slate-800/60 border-slate-600/50 text-white placeholder:text-slate-500 focus:border-emerald-500 focus:ring-emerald-500/20 pl-10"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-slate-300 text-xs uppercase tracking-wider">密码</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="请输入密码"
+                      className="bg-slate-800/60 border-slate-600/50 text-white placeholder:text-slate-500 pl-10 pr-10 focus:border-emerald-500 focus:ring-emerald-500/20"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={loading || locked}
+                  className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-5 shadow-lg shadow-emerald-500/20 transition-all hover:shadow-emerald-500/30"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      登录中...
+                    </>
+                  ) : (
+                    '登 录'
+                  )}
+                </Button>
+              </form>
+
+              {/* Demo info */}
+              <div className="mt-6 p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-lg">
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  💡 默认管理员账号：<span className="text-emerald-400 font-medium">admin</span> / <span className="text-emerald-400 font-medium">123456</span>
+                </p>
+              </div>
+
+              <div className="mt-4 flex items-center justify-center gap-3 text-xs text-slate-500">
+                <div className="flex items-center gap-1"><Shield className="w-3 h-3" />通信加密</div>
+                <span className="text-slate-600">·</span>
+                <div className="flex items-center gap-1"><Lock className="w-3 h-3" />登录防护</div>
+                <span className="text-slate-600">·</span>
+                <div className="flex items-center gap-1"><Monitor className="w-3 h-3" />操作审计</div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* 系统特性 Section */}
+        <div className="mt-6 grid grid-cols-3 gap-3">
+          {features.map((f) => (
+            <div
+              key={f.title}
+              className={`rounded-lg bg-gradient-to-br ${f.color} border backdrop-blur-sm p-3 text-center`}
+            >
+              <f.icon className="w-5 h-5 mx-auto text-emerald-400 mb-1.5" />
+              <p className="text-xs font-medium text-white mb-0.5">{f.title}</p>
+              <p className="text-[10px] text-slate-400 leading-tight">{f.desc}</p>
             </div>
+          ))}
+        </div>
 
-            <div className="mt-4 flex items-center justify-center gap-3 text-xs text-slate-500">
-              <div className="flex items-center gap-1"><Shield className="w-3 h-3" />通信加密</div>
-              <span className="text-slate-600">·</span>
-              <div className="flex items-center gap-1"><Lock className="w-3 h-3" />登录防护</div>
-              <span className="text-slate-600">·</span>
-              <div className="flex items-center gap-1"><Monitor className="w-3 h-3" />操作审计</div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <p className="text-center text-xs text-slate-600 mt-6">
-          设备信息采集器 · 管理端 v2.0
-        </p>
+        {/* Footer with version badge */}
+        <div className="mt-6 flex items-center justify-center gap-2">
+          <p className="text-xs text-slate-600">
+            设备信息采集器 · 管理端
+          </p>
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-slate-700 text-slate-500 bg-slate-800/50">
+            v2.0.0
+          </Badge>
+        </div>
       </div>
     </div>
   );

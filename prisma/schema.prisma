@@ -100,3 +100,14 @@ model ApiKey {
 
   @@map("api_keys")
 }
+
+model DeviceHistory {
+  id        Int      @id @default(autoincrement())
+  deviceId  Int      @map("device_id")
+  action    String
+  changes   String
+  operator  String?  @map("operator")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("device_histories")
+}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashPassword, verifyPassword } from '@/lib/auth';
 import { setSession, clearSession } from '@/lib/session';
+import { wsNotify } from '@/lib/ws-notify';
 
 // Simple in-memory rate limiting
 const loginAttempts = new Map<string, { count: number; lockedUntil: number }>();
@@ -90,6 +91,14 @@ export async function POST(request: NextRequest) {
         operator: user.username,
       }
     });
+
+    // Send real-time notification
+    wsNotify(
+      'user_login',
+      '用户登录',
+      `用户${user.displayName || user.username}已登录`,
+      { userId: user.id, username: user.username, role: user.role }
+    );
 
     return NextResponse.json({
       id: user.id,

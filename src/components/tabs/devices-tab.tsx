@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 import { Monitor, Pencil, Trash2, Eye, AlertTriangle, Search, Download, Upload, RefreshCw,
   CheckCircle2, XCircle, Copy, Loader2, ChevronLeft, ChevronRight,
   Server, Cpu, HardDrive, Network, Wifi, Users, Globe, FileText, KeyRound, Plus, ChevronDown,
-  Filter, X, SlidersHorizontal, Printer, GitCompare } from 'lucide-react';
+  Filter, X, SlidersHorizontal, Printer, GitCompare, History, ArrowRight } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -65,7 +65,16 @@ export function DevicesTab() {
   const [saving, setSaving] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
 
-  // Batch import state
+  // History state
+  const [historyDeviceId, setHistoryDeviceId] = useState<number | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+
+  const { data: historyData, isLoading: historyLoading } = useQuery<any[]>({
+    queryKey: ['device-history', historyDeviceId],
+    queryFn: () => fetch(`/api/devices/${historyDeviceId}/history`).then(r => r.json()),
+    enabled: showHistory && !!historyDeviceId,
+  });
+
   const [showBatchImport, setShowBatchImport] = useState(false);
   const [batchProjectId, setBatchProjectId] = useState('');
   const [batchDeptId, setBatchDeptId] = useState('');
@@ -442,6 +451,14 @@ export function DevicesTab() {
                           </TooltipTrigger>
                           <TooltipContent side="bottom" className="text-xs">删除</TooltipContent>
                         </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setHistoryDeviceId(d.id); setShowHistory(true); }}>
+                              <History className="w-3.5 h-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="text-xs">变更历史</TooltipContent>
+                        </Tooltip>
                       </div>
                       </TooltipProvider>
                     </TableCell>
@@ -525,6 +542,13 @@ export function DevicesTab() {
                     <div key={String(l)}><p className="text-xs text-muted-foreground">{String(l)}</p><p className="text-sm font-medium break-all">{v || '-'}</p></div>
                   ))}
                 </div>
+              </div>
+
+              {/* Print Report Button */}
+              <div className="pt-2 flex justify-end">
+                <Button variant="outline" onClick={() => window.open(`/api/devices/${viewDevice.id}/report`, '_blank')} className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-950/30">
+                  <FileText className="w-4 h-4 mr-1.5" />打印报告
+                </Button>
               </div>
             </div>
           )}
@@ -783,6 +807,86 @@ export function DevicesTab() {
       </Dialog>
 
       <ConfirmDialog open={!!deleteItem} onOpenChange={v => !v && setDeleteItem(null)} title="删除设备" message={`确定要删除设备"${deleteItem?.computerName || deleteItem?.id}"吗？`} onConfirm={handleDelete} loading={saving} />
+
+      {/* History Dialog */}
+      <Dialog open={showHistory} onOpenChange={v => { if (!v) { setShowHistory(false); setHistoryDeviceId(null); } }}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="w-5 h-5 text-emerald-600" />
+              设备变更历史
+            </DialogTitle>
+            <DialogDescription className="sr-only">查看设备的所有变更记录</DialogDescription>
+          </DialogHeader>
+          {historyLoading ? (
+            <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-emerald-600" /></div>
+          ) : !historyData || historyData.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 py-12">
+              <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center"><History className="w-6 h-6 text-muted-foreground/30" /></div>
+              <p className="text-sm text-muted-foreground">暂无变更记录</p>
+            </div>
+          ) : (
+            <ScrollArea className="max-h-[500px]">
+              <div className="space-y-0">
+                {(() => {
+                  const actionColors: Record<string, string> = { CREATE: 'emerald', UPDATE: 'amber', DELETE: 'red' };
+                  const actionLabels: Record<string, string> = { CREATE: '创建', UPDATE: '更新', DELETE: '删除' };
+                  let lastDate = '';
+                  return historyData.map((h: any, idx: number) => {
+                    const date = new Date(h.createdAt);
+                    const dateStr = date.toLocaleDateString('zh-CN');
+                    const showDateHeader = dateStr !== lastDate;
+                    lastDate = dateStr;
+                    const color = actionColors[h.action] || 'slate';
+                    const dotColorClass = h.action === 'CREATE' ? 'bg-emerald-500' : h.action === 'DELETE' ? 'bg-red-500' : 'bg-amber-500';
+                    const borderClass = h.action === 'CREATE' ? 'border-emerald-300 dark:border-emerald-700' : h.action === 'DELETE' ? 'border-red-300 dark:border-red-700' : 'border-amber-300 dark:border-amber-700';
+                    const badgeClass = h.action === 'CREATE' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : h.action === 'DELETE' ? 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
+                    const monoFields = ['IP地址', 'MAC地址', '子网掩码', '默认网关', 'DNS服务器'];
+                    return (
+                      <div key={h.id}>
+                        {showDateHeader && (
+                          <div className="text-xs font-medium text-muted-foreground py-2 mt-2 first:mt-0">{dateStr}</div>
+                        )}
+                        <div className="flex gap-3 pb-4 relative">
+                          <div className={`flex flex-col items-center ${borderClass} border-l-2 ml-1.5`}>
+                            <div className={`w-3 h-3 rounded-full ${dotColorClass} -ml-[7px] mt-1 ring-2 ring-background shrink-0`} />
+                          </div>
+                          <div className="flex-1 min-w-0 -mt-0.5">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge variant="outline" className={`text-[10px] ${badgeClass}`}>{actionLabels[h.action] || h.action}</Badge>
+                              <span className="text-xs text-muted-foreground">{date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>
+                              {h.operator && <span className="text-xs text-muted-foreground">· {h.operator}</span>}
+                            </div>
+                            {h.action === 'UPDATE' && h.changes && typeof h.changes === 'object' && (
+                              <div className="mt-1.5 space-y-1">
+                                {Object.entries(h.changes).map(([field, change]: [string, any]) => (
+                                  <div key={field} className="text-xs">
+                                    <span className="font-medium text-foreground">{field}</span>
+                                    <span className="mx-1.5 text-muted-foreground">:</span>
+                                    <span className="line-through text-red-500 dark:text-red-400">{change.old ?? '空'}</span>
+                                    <ArrowRight className="w-3 h-3 inline mx-1 text-muted-foreground" />
+                                    <span className={`text-emerald-600 dark:text-emerald-400 ${monoFields.includes(field) ? 'font-mono' : ''}`}>{change.new ?? '空'}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {h.action === 'CREATE' && (
+                              <p className="text-xs text-muted-foreground mt-1">创建设备</p>
+                            )}
+                            {h.action === 'DELETE' && (
+                              <p className="text-xs text-muted-foreground mt-1">删除设备</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </ScrollArea>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Print Report Dialog */}
       <Dialog open={showPrintReport} onOpenChange={setShowPrintReport}>

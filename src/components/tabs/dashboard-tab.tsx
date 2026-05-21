@@ -6,11 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Monitor, CheckCircle2, Building2, Users, TrendingUp, BarChart3, ChartPie, Server, Clock, Database, Cpu, LogIn, HardDrive, MemoryStick } from 'lucide-react';
+import { Monitor, CheckCircle2, Building2, Users, TrendingUp, BarChart3, ChartPie, Server, Clock, Database, Cpu, LogIn, HardDrive, MemoryStick, FolderKanban, Download, Settings, ArrowRight, Zap } from 'lucide-react';
 import {
   BarChart as RechartsBarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
   PieChart as RechartsPieChart, Pie, Legend, AreaChart as RechartsAreaChart, Area,
 } from 'recharts';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 
 // ===== System Info Types =====
 interface SystemInfoData {
@@ -217,7 +219,11 @@ function DonutCenterLabel({ cx, cy, total }: { cx: number; cy: number; total: nu
 }
 
 // ===== Dashboard Tab Component =====
-export function DashboardTab() {
+interface DashboardTabProps {
+  onTabChange?: (tab: string) => void;
+}
+
+export function DashboardTab({ onTabChange }: DashboardTabProps) {
   const { data: stats, isLoading } = useQuery<Stats>({
     queryKey: ['stats'],
     queryFn: () => fetch('/api/stats').then(r => r.json()),
@@ -592,6 +598,36 @@ export function DashboardTab() {
         </div>
       )}
 
+      {/* ===== Quick Actions Card ===== */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Zap className="w-4 h-4 text-emerald-600" />
+            快捷操作
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: '添加设备', icon: Monitor, tab: 'devices' },
+              { label: '新建项目', icon: FolderKanban, tab: 'projects' },
+              { label: '导出数据', icon: Download, tab: 'settings' },
+              { label: '系统设置', icon: Settings, tab: 'settings' },
+            ].map((action) => (
+              <Button
+                key={action.label}
+                variant="outline"
+                className="h-auto py-3 flex flex-col items-center gap-2 hover:border-emerald-300 hover:text-emerald-700 hover:bg-emerald-50/50 dark:hover:border-emerald-700 dark:hover:text-emerald-400 dark:hover:bg-emerald-950/20 transition-all"
+                onClick={() => onTabChange?.(action.tab)}
+              >
+                <action.icon className="w-5 h-5" />
+                <span className="text-xs font-medium">{action.label}</span>
+              </Button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* ===== Bottom Section: Project Cards + Recent Records ===== */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* Project Detail Cards */}
@@ -600,27 +636,51 @@ export function DashboardTab() {
             <CardTitle className="text-base">项目概况</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {stats.projectStats.map((p, i) => (
-              <div
-                key={p.id}
-                className={`p-3 rounded-lg border ${bgMap[projectColors[i % 4]]}`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-semibold">{p.name}</span>
-                  <Badge variant="outline" className="text-[10px]">
-                    {p.code || '-'}
-                  </Badge>
+            {stats.projectStats.map((p, i) => {
+              const totalDevices = stats.deviceCount || 1;
+              const devicePercent = Math.round((p.deviceCount / totalDevices) * 100);
+              const progressColors = ['bg-emerald-500', 'bg-teal-500', 'bg-cyan-500', 'bg-amber-500'];
+              return (
+                <div
+                  key={p.id}
+                  className={`p-3 rounded-lg border ${bgMap[projectColors[i % 4]]}`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-semibold">{p.name}</span>
+                    <Badge variant="outline" className="text-[10px]">
+                      {p.code || '-'}
+                    </Badge>
+                  </div>
+                  <div className="flex gap-4 text-xs text-muted-foreground mb-2">
+                    <span>
+                      设备 <strong className="text-foreground tabular-nums">{p.deviceCount}</strong>
+                    </span>
+                    <span>
+                      单位 <strong className="text-foreground tabular-nums">{p.deptCount}</strong>
+                    </span>
+                  </div>
+                  {/* Progress bar showing device share */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-muted-foreground">设备占比</span>
+                      <span className="text-[10px] font-medium tabular-nums">{devicePercent}%</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-muted/50 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${progressColors[i % 4]} transition-all duration-500`}
+                        style={{ width: `${devicePercent}%` }}
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => onTabChange?.('projects')}
+                    className="mt-2 flex items-center gap-1 text-[10px] font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors"
+                  >
+                    查看详情 <ArrowRight className="w-3 h-3" />
+                  </button>
                 </div>
-                <div className="flex gap-4 text-xs text-muted-foreground">
-                  <span>
-                    设备 <strong className="text-foreground tabular-nums">{p.deviceCount}</strong>
-                  </span>
-                  <span>
-                    单位 <strong className="text-foreground tabular-nums">{p.deptCount}</strong>
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
             {stats.projectStats.length === 0 && (
               <p className="text-center text-muted-foreground py-4">暂无项目</p>
             )}

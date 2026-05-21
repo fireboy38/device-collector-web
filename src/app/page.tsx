@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { io as socketIo } from 'socket.io-client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTheme } from 'next-themes';
 import { useAuthStore } from '@/store/auth';
@@ -30,7 +31,7 @@ import { toast } from 'sonner';
 import {
   LayoutDashboard, FolderKanban, Users, Building2, Monitor, Globe, FileText, KeyRound,
   LogOut, Loader2, Sun, Moon, ChevronDown, Bell, Zap, Settings, Menu, Search,
-  Keyboard, Compass, HelpCircle, RefreshCw, Clock,
+  Keyboard, Compass, HelpCircle, RefreshCw, Clock, Wifi, WifiOff,
 } from 'lucide-react';
 
 // ===== Helpers =====
@@ -79,6 +80,8 @@ export default function HomePage() {
   const [pwdSaving, setPwdSaving] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [wsConnected, setWsConnected] = useState(false);
+  const socketRef = useRef<ReturnType<typeof socketIo> | null>(null);
 
   // Global Search state
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -233,6 +236,90 @@ export default function HomePage() {
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, [user]);
+
+  // WebSocket real-time notification connection
+  useEffect(() => {
+    if (!user) {
+      // Disconnect if user logs out
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+      setWsConnected(false);
+      return;
+    }
+
+    // Connect to WebSocket notification service
+    const socket = socketIo('/?XTransformPort=3003', {
+      transports: ['websocket', 'polling'],
+      forceNew: true,
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 2000,
+      timeout: 10000,
+    });
+
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      console.log('[WS] Connected to notification service');
+      setWsConnected(true);
+      // Subscribe with role info
+      socket.emit('subscribe', { role: user.role, userId: user.id });
+    });
+
+    socket.on('disconnect', () => {
+      console.log('[WS] Disconnected from notification service');
+      setWsConnected(false);
+    });
+
+    socket.on('notification', (payload: { type: string; title: string; message: string; data?: Record<string, unknown>; timestamp?: string }) => {
+      console.log('[WS] Notification received:', payload.type, payload.title);
+
+      // Show toast based on notification type
+      const notifyType = payload.type;
+      if (notifyType === 'device_submit') {
+        toast.success(payload.title, { description: payload.message });
+      } else if (notifyType === 'device_edit') {
+        toast.info(payload.title, { description: payload.message });
+      } else if (notifyType === 'device_delete') {
+        toast.warning(payload.title, { description: payload.message });
+      } else if (notifyType === 'user_login') {
+        toast.info(payload.title, { description: payload.message });
+      } else {
+        toast.info(payload.title, { description: payload.message });
+      }
+
+      // Prepend to notifications list
+      const typeMap: Record<string, string> = {
+        device_submit: 'success',
+        device_edit: 'info',
+        device_delete: 'warning',
+        user_login: 'info',
+      };
+      setNotifications(prev => [{
+        id: Date.now(),
+        type: typeMap[notifyType] || 'info',
+        title: payload.message,
+        time: payload.timestamp || new Date().toISOString(),
+        read: false,
+      }, ...prev.slice(0, 19)]);
+
+      // Increment unread count
+      setUnreadCount(prev => prev + 1);
+
+      // Invalidate relevant queries to refresh data
+      qc.invalidateQueries({ queryKey: ['stats'] });
+      qc.invalidateQueries({ queryKey: ['devices'] });
+      qc.invalidateQueries({ queryKey: ['logs'] });
+    });
+
+    return () => {
+      socket.disconnect();
+      socketRef.current = null;
+      setWsConnected(false);
+    };
+  }, [user, qc]);
 
   const handleChangePwd = async () => {
     if (!pwdForm.oldPassword || !pwdForm.newPassword) { toast.error('请填写完整'); return; }
@@ -449,7 +536,7 @@ export default function HomePage() {
               </Button>
             )}
 
-            {/* Notification Bell */}
+            {/* Notification Bell with real-time indicator */}
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className="text-emerald-100/80 hover:text-white hover:bg-white/10 h-9 w-9 relative">
@@ -459,6 +546,8 @@ export default function HomePage() {
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
+                  {/* Real-time connection indicator */}
+                  <span className={`absolute -bottom-0.5 -left-0.5 w-2.5 h-2.5 rounded-full border-2 border-emerald-800 ${wsConnected ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
                 </Button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-80 p-0">
@@ -468,11 +557,22 @@ export default function HomePage() {
                       <Bell className="w-3.5 h-3.5 text-emerald-600" />
                       系统通知
                     </h4>
-                    {unreadCount > 0 && (
-                      <Badge variant="secondary" className="text-[10px] bg-emerald-100 text-emerald-700">
-                        {unreadCount} 条未读
-                      </Badge>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {wsConnected ? (
+                        <Badge variant="secondary" className="text-[10px] bg-emerald-100 text-emerald-700 flex items-center gap-1">
+                          <Wifi className="w-3 h-3" />实时
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-[10px] bg-red-100 text-red-600 flex items-center gap-1">
+                          <WifiOff className="w-3 h-3" />离线
+                        </Badge>
+                      )}
+                      {unreadCount > 0 && (
+                        <Badge variant="secondary" className="text-[10px] bg-amber-100 text-amber-700">
+                          {unreadCount} 条未读
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <ScrollArea className="max-h-[320px]">
@@ -655,7 +755,7 @@ export default function HomePage() {
               </TabsList>
             )}
 
-            <TabsContent value="dashboard" className="mt-4 sm:mt-6 animate-fade-in"><DashboardTab /></TabsContent>
+            <TabsContent value="dashboard" className="mt-4 sm:mt-6 animate-fade-in"><DashboardTab onTabChange={handleTabChange} /></TabsContent>
             <TabsContent value="projects" className="mt-4 sm:mt-6 animate-fade-in"><ProjectsTab /></TabsContent>
             <TabsContent value="users" className="mt-4 sm:mt-6 animate-fade-in"><UsersTab /></TabsContent>
             <TabsContent value="departments" className="mt-4 sm:mt-6 animate-fade-in"><DepartmentsTab /></TabsContent>

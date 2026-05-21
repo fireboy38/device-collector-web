@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth } from '@/lib/api-auth';
+import { wsNotify } from '@/lib/ws-notify';
+import { getSession } from '@/lib/session';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -75,7 +77,41 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: '没有需要更新的字段' }, { status: 400 });
     }
 
+    // Fetch old device data before updating
+    const oldDevice = await db.device.findUnique({ where: { id: deviceId } });
+
     await db.device.update({ where: { id: deviceId }, data: updateData });
+
+    // Record UPDATE history with field diff
+    if (oldDevice) {
+      const fieldLabels: Record<string, string> = {
+        departmentId: '所属单位', userName: '使用人', userPhone: '联系电话',
+        userPosition: '安装位置', computerName: '电脑名称', ipAddress: 'IP地址',
+        macAddress: 'MAC地址', dhcpEnabled: 'DHCP', osInfo: '操作系统',
+        cpuInfo: 'CPU', ramInfo: '内存', diskInfo: '硬盘',
+        motherboardInfo: '主板', gpuInfo: '显卡', networkAdapter: '网卡',
+        subnetMask: '子网掩码', gateway: '默认网关', dnsServers: 'DNS服务器',
+      };
+      const changedFields: Record<string, { old: unknown; new: unknown }> = {};
+      for (const key of Object.keys(updateData)) {
+        const oldValue = (oldDevice as any)[key];
+        const newValue = updateData[key];
+        if (String(oldValue ?? '') !== String(newValue ?? '')) {
+          changedFields[fieldLabels[key] || key] = { old: oldValue, new: newValue };
+        }
+      }
+      if (Object.keys(changedFields).length > 0) {
+        const session = await getSession();
+        await db.deviceHistory.create({
+          data: {
+            deviceId,
+            action: 'UPDATE',
+            changes: JSON.stringify(changedFields),
+            operator: session?.username || 'system',
+          }
+        });
+      }
+    }
 
     await db.log.create({
       data: {
@@ -84,6 +120,15 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         detail: `修改字段: ${Object.keys(updateData).join(', ')}`,
       }
     });
+
+    // Send real-time notification
+    const deviceForNotify = await db.device.findUnique({ where: { id: deviceId } });
+    wsNotify(
+      'device_edit',
+      '设备信息更新',
+      `设备${deviceForNotify?.computerName || `#${deviceId}`}已更新`,
+      { deviceId, computerName: deviceForNotify?.computerName }
+    );
 
     return NextResponse.json({ message: '更新成功' });
   } catch (error) {
@@ -104,6 +149,19 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       include: { department: true }
     });
 
+    // Record DELETE history before deleting
+    if (device) {
+      const session = await getSession();
+      await db.deviceHistory.create({
+        data: {
+          deviceId,
+          action: 'DELETE',
+          changes: JSON.stringify({ deleted: device }),
+          operator: session?.username || 'system',
+        }
+      });
+    }
+
     await db.device.delete({ where: { id: deviceId } });
 
     await db.log.create({
@@ -113,6 +171,14 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
         detail: `电脑:${device?.computerName || '未知'}, 使用人:${device?.userName || '未知'}`,
       }
     });
+
+    // Send real-time notification
+    wsNotify(
+      'device_delete',
+      '设备已删除',
+      `设备${device?.computerName || `#${deviceId}`}已删除`,
+      { deviceId, computerName: device?.computerName, userName: device?.userName }
+    );
 
     return NextResponse.json({ message: '删除成功' });
   } catch (error) {

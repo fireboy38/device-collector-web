@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { Prisma } from '@prisma/client';
+import { wsNotify } from '@/lib/ws-notify';
+import { getSession } from '@/lib/session';
 
 export async function GET(request: NextRequest) {
   try {
@@ -180,6 +182,25 @@ export async function POST(request: NextRequest) {
         content: '设备信息提交成功',
         detail: `设备ID:${device.id}, 电脑:${data.computer_name || '未知'}, IP:${ipAddress}`,
         operator: data._username || '未知',
+      }
+    });
+
+    // Send real-time notification
+    wsNotify(
+      'device_submit',
+      '新设备提交',
+      `用户${data.user_name || '未知'}提交了设备${data.computer_name || '未知'}`,
+      { deviceId: device.id, userName: data.user_name, computerName: data.computer_name, ipAddress }
+    );
+
+    // Record device history
+    const session = await getSession();
+    await db.deviceHistory.create({
+      data: {
+        deviceId: device.id,
+        action: 'CREATE',
+        changes: JSON.stringify({ all: { old: null, new: data } }),
+        operator: session?.username || data._username || 'system',
       }
     });
 
