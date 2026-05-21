@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  code        String?
+  description String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  users       User[]
+  departments Department[]
+
+  @@map("projects")
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  username     String    @unique
+  passwordHash String    @map("password_hash")
+  displayName  String?   @map("display_name")
+  projectId    Int?      @map("project_id")
+  role         String    @default("user")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  project      Project?  @relation(fields: [projectId], references: [id])
+
+  @@map("users")
+}
+
+model Department {
+  id          Int       @id @default(autoincrement())
+  projectId   Int       @map("project_id")
+  name        String
+  code        String?
+  description String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  project     Project   @relation(fields: [projectId], references: [id])
+  devices     Device[]
+
+  @@map("departments")
+}
+
+model Device {
+  id              Int       @id @default(autoincrement())
+  departmentId    Int       @map("department_id")
+  userName        String    @map("user_name")
+  userPhone       String?   @map("user_phone")
+  userPosition    String?   @map("user_position")
+  computerName    String?   @map("computer_name")
+  ipAddress       String?   @map("ip_address")
+  macAddress      String?   @map("mac_address")
+  dhcpEnabled     String?   @map("dhcp_enabled")
+  osInfo          String?   @map("os_info")
+  cpuInfo         String?   @map("cpu_info")
+  ramInfo         String?   @map("ram_info")
+  diskInfo        String?   @map("disk_info")
+  motherboardInfo String?   @map("motherboard_info")
+  gpuInfo         String?   @map("gpu_info")
+  networkAdapter  String?   @map("network_adapter")
+  subnetMask      String?   @map("subnet_mask")
+  gateway         String?
+  dnsServers      String?   @map("dns_servers")
+  collectedAt     DateTime  @default(now()) @map("collected_at")
+
+  department      Department @relation(fields: [departmentId], references: [id])
+
+  @@map("devices")
+}
+
+model Log {
+  id         Int       @id @default(autoincrement())
+  logType    String    @map("log_type")
+  content    String
+  detail     String?
+  operator   String?
+  ipAddress  String?   @map("ip_address")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@map("logs")
+}
+
+model ApiKey {
+  id          Int       @id @default(autoincrement())
+  name        String
+  apiKey      String    @unique @map("api_key")
+  description String?
+  permissions String    @default("read")
+  isActive    Int       @default(1) @map("is_active")
+  lastUsedAt  DateTime? @map("last_used_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  expiresAt   DateTime? @map("expires_at")
+
+  @@map("api_keys")
+}
