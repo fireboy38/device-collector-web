@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAdmin } from '@/lib/api-auth';
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const authError = await requireAdmin(request);
+    if (authError) return authError;
+
     const { id } = await params;
     const { isActive, name, permissions, description } = await request.json();
 
@@ -21,6 +25,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const authError = await requireAdmin(request);
+    if (authError) return authError;
+
     const { id } = await params;
     await db.apiKey.delete({ where: { id: parseInt(id) } });
     return NextResponse.json({ message: '删除成功' });

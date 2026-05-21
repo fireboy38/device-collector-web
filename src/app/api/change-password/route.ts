@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashPassword } from '@/lib/auth';
+import { requireAuth } from '@/lib/api-auth';
 import { getSession } from '@/lib/session';
 
 export async function POST(request: NextRequest) {
   try {
+    const authError = await requireAuth(request);
+    if (authError) return authError;
+
     const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ error: '未登录' }, { status: 401 });
-    }
 
     const { oldPassword, newPassword } = await request.json();
     if (!oldPassword || !newPassword) {

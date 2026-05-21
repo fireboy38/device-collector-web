@@ -45,6 +45,30 @@ export async function GET() {
       include: { department: { include: { project: true } } },
     });
 
+    // 7-day collection trend
+    const trendData: { date: string; count: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const dayStart = new Date();
+      dayStart.setHours(0, 0, 0, 0);
+      dayStart.setDate(dayStart.getDate() - i);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setDate(dayEnd.getDate() + 1);
+
+      const count = await db.device.count({
+        where: {
+          collectedAt: {
+            gte: dayStart,
+            lt: dayEnd,
+          },
+        },
+      });
+
+      trendData.push({
+        date: dayStart.toISOString().split('T')[0],
+        count,
+      });
+    }
+
     return NextResponse.json({
       deviceCount,
       todayCount,
@@ -52,6 +76,7 @@ export async function GET() {
       deptCount,
       userCount,
       projectStats,
+      trendData,
       recentDevices: recentDevices.map(d => ({
         id: d.id,
         userName: d.userName,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAdmin } from '@/lib/api-auth';
 
 export async function GET() {
   try {
@@ -34,6 +35,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const authError = await requireAdmin(request);
+    if (authError) return authError;
+
     const { name, code, description } = await request.json();
     if (!name?.trim()) {
       return NextResponse.json({ error: '项目名称不能为空' }, { status: 400 });

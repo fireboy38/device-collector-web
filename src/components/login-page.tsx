@@ -1,15 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTheme } from 'next-themes';
 import { useAuthStore } from '@/store/auth';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Monitor, Eye, EyeOff, Loader2, Shield, Lock, AlertTriangle } from 'lucide-react';
+import { Monitor, Eye, EyeOff, Loader2, Shield, Lock, AlertTriangle, Sun, Moon } from 'lucide-react';
 
 export default function LoginPage() {
   const { login, loading } = useAuthStore();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -18,6 +21,8 @@ export default function LoginPage() {
   const [lockedUntil, setLockedUntil] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
   const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null);
+
+  useEffect(() => { setMounted(true); }, []);
 
   // Load saved username on mount
   const [initialUsername] = useState(() => {
@@ -71,6 +76,8 @@ export default function LoginPage() {
     }
   };
 
+  if (!mounted) return null;
+
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-slate-950">
       {/* Animated background */}
@@ -86,11 +93,26 @@ export default function LoginPage() {
         }} />
       </div>
 
+      {/* Theme toggle */}
+      <div className="absolute top-4 right-4 z-20">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-slate-400 hover:text-white hover:bg-white/10"
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+        >
+          {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+        </Button>
+      </div>
+
       <div className="relative z-10 w-full max-w-md px-4">
         {/* Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/25 mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/25 mb-4 relative">
             <Monitor className="w-8 h-8 text-white" />
+            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-400 rounded-full flex items-center justify-center">
+              <Shield className="w-3 h-3 text-white" />
+            </div>
           </div>
           <h1 className="text-2xl font-bold text-white">设备信息采集器</h1>
           <p className="text-slate-400 text-sm mt-1">管理端登录</p>
@@ -117,26 +139,30 @@ export default function LoginPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="username" className="text-slate-300 text-xs uppercase tracking-wider">用户名</Label>
-                <Input
-                  id="username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="请输入用户名"
-                  className="bg-slate-800/60 border-slate-600/50 text-white placeholder:text-slate-500 focus:border-emerald-500 focus:ring-emerald-500/20"
-                  autoFocus
-                />
+                <div className="relative">
+                  <Monitor className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <Input
+                    id="username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="请输入用户名"
+                    className="bg-slate-800/60 border-slate-600/50 text-white placeholder:text-slate-500 focus:border-emerald-500 focus:ring-emerald-500/20 pl-10"
+                    autoFocus
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-slate-300 text-xs uppercase tracking-wider">密码</Label>
                 <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="请输入密码"
-                    className="bg-slate-800/60 border-slate-600/50 text-white placeholder:text-slate-500 pr-10 focus:border-emerald-500 focus:ring-emerald-500/20"
+                    className="bg-slate-800/60 border-slate-600/50 text-white placeholder:text-slate-500 pl-10 pr-10 focus:border-emerald-500 focus:ring-emerald-500/20"
                   />
                   <button
                     type="button"
@@ -151,7 +177,7 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 disabled={loading || locked}
-                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-5 shadow-lg shadow-emerald-500/20 transition-all"
+                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-5 shadow-lg shadow-emerald-500/20 transition-all hover:shadow-emerald-500/30"
               >
                 {loading ? (
                   <>
@@ -171,9 +197,12 @@ export default function LoginPage() {
               </p>
             </div>
 
-            <div className="mt-4 flex items-center justify-center gap-1.5 text-xs text-slate-500">
-              <Shield className="w-3 h-3" />
-              <span>通信加密 · 登录防护 · 操作审计</span>
+            <div className="mt-4 flex items-center justify-center gap-3 text-xs text-slate-500">
+              <div className="flex items-center gap-1"><Shield className="w-3 h-3" />通信加密</div>
+              <span className="text-slate-600">·</span>
+              <div className="flex items-center gap-1"><Lock className="w-3 h-3" />登录防护</div>
+              <span className="text-slate-600">·</span>
+              <div className="flex items-center gap-1"><Monitor className="w-3 h-3" />操作审计</div>
             </div>
           </CardContent>
         </Card>

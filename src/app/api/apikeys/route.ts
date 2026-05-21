@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { generateApiKey } from '@/lib/auth';
+import { requireAdmin } from '@/lib/api-auth';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const authError = await requireAdmin(request);
+    if (authError) return authError;
+
     const keys = await db.apiKey.findMany({ orderBy: { id: 'asc' } });
     const result = keys.map(k => ({
       ...k,
@@ -17,6 +21,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const authError = await requireAdmin(request);
+    if (authError) return authError;
+
     const { name, permissions, description, expiresAt } = await request.json();
     if (!name?.trim()) {
       return NextResponse.json({ error: '名称不能为空' }, { status: 400 });
