@@ -7,7 +7,68 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Monitor, Eye, EyeOff, Loader2, Shield, Lock, AlertTriangle, Sun, Moon } from 'lucide-react';
+import { Monitor, Eye, EyeOff, Loader2, Shield, Lock, AlertTriangle, Sun, Moon, Cpu, Database, Wifi, Server } from 'lucide-react';
+
+// Floating particle component
+function FloatingParticles() {
+  const particles = Array.from({ length: 20 }, (_, i) => ({
+    id: i,
+    left: `${Math.random() * 100}%`,
+    top: `${Math.random() * 100}%`,
+    size: Math.random() * 4 + 2,
+    duration: Math.random() * 20 + 15,
+    delay: Math.random() * 10,
+    opacity: Math.random() * 0.3 + 0.05,
+  }));
+
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {particles.map(p => (
+        <div
+          key={p.id}
+          className="absolute rounded-full bg-emerald-400"
+          style={{
+            left: p.left,
+            top: p.top,
+            width: `${p.size}px`,
+            height: `${p.size}px`,
+            opacity: p.opacity,
+            animation: `float ${p.duration}s ease-in-out ${p.delay}s infinite`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// Floating icon decorations
+function FloatingIcons() {
+  const icons = [
+    { Icon: Cpu, left: '10%', top: '20%', delay: 0, duration: 25 },
+    { Icon: Database, left: '80%', top: '15%', delay: 3, duration: 22 },
+    { Icon: Wifi, left: '15%', top: '70%', delay: 6, duration: 28 },
+    { Icon: Server, left: '75%', top: '65%', delay: 9, duration: 24 },
+    { Icon: Monitor, left: '50%', top: '85%', delay: 12, duration: 20 },
+  ];
+
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {icons.map(({ Icon, left, top, delay, duration }, i) => (
+        <div
+          key={i}
+          className="absolute text-emerald-500/[0.06]"
+          style={{
+            left,
+            top,
+            animation: `float ${duration}s ease-in-out ${delay}s infinite`,
+          }}
+        >
+          <Icon className="w-16 h-16" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function LoginPage() {
   const { login, loading } = useAuthStore();
@@ -91,6 +152,8 @@ export default function LoginPage() {
           backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
           backgroundSize: '60px 60px'
         }} />
+        <FloatingParticles />
+        <FloatingIcons />
       </div>
 
       {/* Theme toggle */}

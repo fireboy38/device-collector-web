@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 import { Monitor, Pencil, Trash2, Eye, AlertTriangle, Search, Download, Upload, RefreshCw,
   CheckCircle2, XCircle, Copy, Loader2, ChevronLeft, ChevronRight,
   Server, Cpu, HardDrive, Network, Wifi, Users, Globe, FileText, KeyRound, Plus, ChevronDown,
-  Filter, X, SlidersHorizontal, Printer } from 'lucide-react';
+  Filter, X, SlidersHorizontal, Printer, GitCompare } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 export function DevicesTab() {
@@ -30,6 +30,8 @@ export function DevicesTab() {
   const [keyword, setKeyword] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showPrintReport, setShowPrintReport] = useState(false);
+  const [compareIds, setCompareIds] = useState<number[]>([]);
+  const [showCompare, setShowCompare] = useState(false);
   const [filterOs, setFilterOs] = useState('');
   const [filterDhcp, setFilterDhcp] = useState('');
   const [filterDateFrom, setFilterDateFrom] = useState('');
@@ -220,6 +222,18 @@ export function DevicesTab() {
               )}
             </Button>
             <Button variant="outline" size="sm" onClick={checkDuplicates}><AlertTriangle className="w-4 h-4 mr-1" />查重</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={compareIds.length < 2}
+              onClick={() => setShowCompare(true)}
+              className={compareIds.length >= 2 ? "border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-950/30" : ""}
+            >
+              <GitCompare className="w-4 h-4 mr-1" />对比
+              {compareIds.length > 0 && (
+                <Badge className="ml-1.5 h-5 min-w-[20px] px-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-0 text-[10px]">{compareIds.length}</Badge>
+              )}
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm"><Download className="w-4 h-4 mr-1" />导出<ChevronDown className="w-3 h-3 ml-0.5" /></Button>
@@ -346,6 +360,7 @@ export function DevicesTab() {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader><TableRow>
+                <TableHead className="w-10"></TableHead>
                 <TableHead className="w-12">ID</TableHead>
                 <TableHead>所属项目</TableHead>
                 <TableHead>所属单位</TableHead>
@@ -361,6 +376,20 @@ export function DevicesTab() {
               <TableBody>
                 {devices?.map(d => (
                   <TableRow key={d.id} className="table-row-hover">
+                    <TableCell className="w-10 text-center">
+                      <input
+                        type="checkbox"
+                        checked={compareIds.includes(d.id)}
+                        onChange={() => {
+                          setCompareIds(prev => {
+                            if (prev.includes(d.id)) return prev.filter(id => id !== d.id);
+                            if (prev.length >= 4) { toast.warning('最多选择4台设备进行对比'); return prev; }
+                            return [...prev, d.id];
+                          });
+                        }}
+                        className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer accent-emerald-600"
+                      />
+                    </TableCell>
                     <TableCell>{d.id}</TableCell>
                     <TableCell><Badge variant="outline" className="text-[10px]">{d.projectName || '-'}</Badge></TableCell>
                     <TableCell className="text-sm">{d.departmentName || '-'}</TableCell>
@@ -392,7 +421,7 @@ export function DevicesTab() {
                 ))}
                 {(!devices || devices.length === 0) && (
                   <TableRow>
-                    <TableCell colSpan={11} className="py-12">
+                    <TableCell colSpan={12} className="py-12">
                       <div className="flex flex-col items-center gap-2 text-center">
                         <Monitor className="w-10 h-10 text-muted-foreground/30" />
                         <p className="text-sm font-medium">暂无设备</p>
@@ -584,6 +613,136 @@ export function DevicesTab() {
               开始导入
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Comparison Dialog */}
+      <Dialog open={showCompare} onOpenChange={v => { if (!v) setShowCompare(false); }}>
+        <DialogContent className="sm:max-w-5xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <GitCompare className="w-5 h-5 text-emerald-600" />
+              设备对比
+            </DialogTitle>
+          </DialogHeader>
+          {(() => {
+            const selectedDevices = devices?.filter(d => compareIds.includes(d.id)) || [];
+            if (selectedDevices.length < 2) return <p className="text-sm text-muted-foreground py-8 text-center">请至少选择2台设备进行对比</p>;
+
+            const compareFields: { group: string; icon: React.ReactNode; fields: { key: keyof Device; label: string; mono?: boolean }[] }[] = [
+              {
+                group: '人员信息',
+                icon: <Users className="w-3.5 h-3.5" />,
+                fields: [
+                  { key: 'userName', label: '使用人' },
+                  { key: 'userPhone', label: '联系电话' },
+                  { key: 'userPosition', label: '安装位置' },
+                ],
+              },
+              {
+                group: '网络信息',
+                icon: <Wifi className="w-3.5 h-3.5" />,
+                fields: [
+                  { key: 'computerName', label: '电脑名称' },
+                  { key: 'ipAddress', label: 'IP地址', mono: true },
+                  { key: 'macAddress', label: 'MAC地址', mono: true },
+                  { key: 'dhcpEnabled', label: 'DHCP' },
+                  { key: 'networkAdapter', label: '网卡' },
+                  { key: 'subnetMask', label: '子网掩码', mono: true },
+                  { key: 'gateway', label: '默认网关', mono: true },
+                  { key: 'dnsServers', label: 'DNS服务器', mono: true },
+                ],
+              },
+              {
+                group: '硬件信息',
+                icon: <Cpu className="w-3.5 h-3.5" />,
+                fields: [
+                  { key: 'osInfo', label: '操作系统' },
+                  { key: 'cpuInfo', label: 'CPU' },
+                  { key: 'ramInfo', label: '内存' },
+                  { key: 'diskInfo', label: '硬盘' },
+                  { key: 'motherboardInfo', label: '主板' },
+                  { key: 'gpuInfo', label: '显卡' },
+                ],
+              },
+              {
+                group: '其他信息',
+                icon: <Globe className="w-3.5 h-3.5" />,
+                fields: [
+                  { key: 'projectName', label: '所属项目' },
+                  { key: 'departmentName', label: '所属单位' },
+                  { key: 'collectedAt', label: '采集时间' },
+                ],
+              },
+            ];
+
+            const isDifferent = (key: keyof Device) => {
+              const values = selectedDevices.map(d => d[key] ?? '');
+              return !values.every(v => v === values[0]);
+            };
+
+            const colCount = selectedDevices.length;
+
+            return (
+              <div className="space-y-5">
+                {/* Device Headers */}
+                <div className={`grid gap-3 ${colCount <= 2 ? 'grid-cols-1 sm:grid-cols-2' : colCount === 3 ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'}`}>
+                  {selectedDevices.map(d => (
+                    <div key={d.id} className="rounded-lg border p-3 bg-muted/30">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Monitor className="w-4 h-4 text-emerald-600" />
+                        <span className="font-semibold text-sm">{d.computerName || `设备 #${d.id}`}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]">{d.projectName || '未知项目'}</Badge>
+                        <Badge variant="outline" className="text-[10px]">{d.departmentName || '未知单位'}</Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Field Groups */}
+                {compareFields.map(group => (
+                  <div key={group.group}>
+                    <h4 className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 mb-2 flex items-center gap-1.5">{group.icon}{group.group}</h4>
+                    <div className="rounded-lg border overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-muted/50">
+                            <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground w-24 min-w-[80px]">字段</th>
+                            {selectedDevices.map(d => (
+                              <th key={d.id} className="text-left py-2 px-3 text-xs font-medium">{d.computerName || `#${d.id}`}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {group.fields.map(field => {
+                            const diff = isDifferent(field.key);
+                            return (
+                              <tr key={field.key} className={`border-t ${diff ? 'bg-amber-50 dark:bg-amber-950/20' : ''}`}>
+                                <td className="py-2 px-3 text-xs text-muted-foreground whitespace-nowrap">{field.label}</td>
+                                {selectedDevices.map(d => (
+                                  <td key={d.id} className={`py-2 px-3 text-xs break-all ${field.mono ? 'font-mono' : ''} ${diff ? 'font-medium text-amber-800 dark:text-amber-300' : ''}`}>
+                                    {field.key === 'collectedAt' ? formatDate(d[field.key] as string) : (d[field.key] as string || '-')}
+                                  </td>
+                                ))}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Legend */}
+                <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2 border-t">
+                  <div className="w-4 h-4 rounded bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800" />
+                  <span>高亮行表示该字段在设备间存在差异</span>
+                </div>
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
 

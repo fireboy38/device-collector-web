@@ -944,3 +944,82 @@ Stage Summary:
 - Consistent styling pattern applied: centered flex column with proper spacing and muted colors
 - Icons used: Inbox (projects), Users (users), Building2 (departments), Monitor (devices), KeyRound (apikeys)
 - All lint checks passing with zero errors
+
+---
+Task ID: 10
+Agent: Device Comparison Agent
+Task: Add device comparison feature
+
+Work Log:
+- Read worklog.md to understand project context and existing devices-tab.tsx implementation
+- Reviewed Device type from @/lib/types.ts to identify all available fields
+- Added GitCompare import from lucide-react
+- Added compareIds (number[]) and showCompare (boolean) state variables
+- Added checkbox column as the FIRST column in the device table (before ID)
+  - Checkbox with accent-emerald-600 styling
+  - Max 4 devices selectable with toast warning
+  - Checked state bound to compareIds.includes(d.id)
+- Added "对比" (Compare) button in the filter bar next to "查重" button
+  - GitCompare icon with "对比" label
+  - Disabled when compareIds.length < 2
+  - Emerald accent styling when enabled (border-emerald-300, text-emerald-700)
+  - Badge showing selected count (bg-emerald-100 text-emerald-700)
+- Updated colSpan from 11 to 12 in empty state row for new column
+- Created Comparison Dialog (sm:max-w-5xl, max-h-[85vh], overflow-y-auto)
+  - Header with GitCompare icon and "设备对比" title
+  - Device header cards showing computer name, project, and department badges
+  - Responsive grid layout: 1 col mobile, 2 cols sm, 3-4 cols lg
+  - 4 field groups matching existing detail dialog structure:
+    - 人员信息 (Users icon): 使用人, 联系电话, 安装位置
+    - 网络信息 (Wifi icon): 电脑名称, IP地址, MAC地址, DHCP, 网卡, 子网掩码, 默认网关, DNS服务器
+    - 硬件信息 (Cpu icon): 操作系统, CPU, 内存, 硬盘, 主板, 显卡
+    - 其他信息 (Globe icon): 所属项目, 所属单位, 采集时间
+  - Table-based layout with field labels on left, values per device in columns
+  - Difference highlighting: bg-amber-50 dark:bg-amber-950/20 for rows with differing values
+  - Font-mono for network fields (IP, MAC, subnet, gateway, DNS)
+  - Legend at bottom explaining highlight meaning
+- Ran bun run lint with zero errors
+- Dev server compiling successfully
+
+Stage Summary:
+- Device comparison feature fully implemented in devices-tab.tsx
+- Users can select 2-4 devices via checkboxes in the table
+- "对比" button opens side-by-side comparison dialog
+- Differences between devices highlighted with amber background
+- All 4 field groups (Personnel, Network, Hardware, Other) displayed in aligned rows
+- Responsive grid layout adapts to 1-4 columns based on device count
+- All lint checks passing with zero errors
+- Dev server stable and running
+
+---
+Task ID: 11
+Agent: Global Search Agent
+Task: Add global search feature
+
+Work Log:
+- Read worklog.md to understand project context and existing architecture
+- Reviewed current page.tsx, Prisma schema, and existing API routes
+- Created Global Search API at /src/app/api/search/route.ts
+- Added global search UI to header in page.tsx with keyboard shortcut, popover, and result grouping
+- Ran lint check with zero errors
+- Tested search API with curl - returns correct results for devices, projects, users, departments
+
+Stage Summary:
+- Global Search API endpoint created at GET /api/search?q=keyword (public, no auth required)
+- Searches across devices (userName, computerName, ipAddress, macAddress, osInfo), projects (name, code), users (username, displayName), departments (name, code)
+- Results grouped by type with 5 results max per type
+- Global Search UI added to header between title and notification bell (hidden on mobile, visible on sm+)
+- Keyboard shortcut Cmd/Ctrl+K to focus search input
+- Debounced search (300ms) with loading spinner
+- Popover dropdown with results grouped by type:
+  - 设备 (Monitor icon, emerald badge) - shows userName + ipAddress/computerName
+  - 项目 (FolderKanban icon, teal badge) - shows name + code/description
+  - 用户 (Users icon, cyan badge) - shows displayName + username/projectName + role badge
+  - 单位 (Building2 icon, amber badge) - shows name + code/projectName
+- Clicking a result navigates to the corresponding tab
+- "无搜索结果" shown when no results found
+- Escape key clears search and blurs input
+- Click outside dismisses popover
+- Subtle search input design with Search icon prefix, placeholder "搜索设备、项目、用户... (⌘K)"
+- All lint checks passing with zero errors
+- Dev server running successfully

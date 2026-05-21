@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTheme } from 'next-themes';
 import { useAuthStore } from '@/store/auth';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -28,7 +28,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import { toast } from 'sonner';
 import {
   LayoutDashboard, FolderKanban, Users, Building2, Monitor, Globe, FileText, KeyRound,
-  LogOut, Loader2, Sun, Moon, ChevronDown, Bell, Zap, Settings, Menu,
+  LogOut, Loader2, Sun, Moon, ChevronDown, Bell, Zap, Settings, Menu, Search,
 } from 'lucide-react';
 
 // ===== Helpers =====
@@ -61,6 +61,18 @@ export default function HomePage() {
   const [pwdForm, setPwdForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
   const [pwdSaving, setPwdSaving] = useState(false);
 
+  // Global Search state
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchResults, setSearchResults] = useState<{
+    devices: Array<{ id: number; userName: string; computerName: string | null; ipAddress: string | null; osInfo: string | null; departmentName: string | null; projectName: string | null }>;
+    projects: Array<{ id: number; name: string; code: string | null; description: string | null }>;
+    users: Array<{ id: number; username: string; displayName: string | null; role: string; projectName: string | null }>;
+    departments: Array<{ id: number; name: string; code: string | null; projectName: string | null }>;
+  }>({ devices: [], projects: [], users: [], departments: [] });
+
   const handleTabChange = useCallback((tab: string) => {
     setActiveTab(tab);
     setSidebarOpen(false);
@@ -68,6 +80,54 @@ export default function HomePage() {
 
   useEffect(() => { checkAuth(); }, [checkAuth]);
   useEffect(() => { setMounted(true); }, []);
+
+  // Global Search: keyboard shortcut Cmd/Ctrl+K
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        setSearchOpen(true);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Global Search: debounced fetch
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const performSearch = useCallback((query: string) => {
+    if (!query.trim()) {
+      setSearchResults({ devices: [], projects: [], users: [], departments: [] });
+      setSearchLoading(false);
+      return;
+    }
+    setSearchLoading(true);
+    fetch(`/api/search?q=${encodeURIComponent(query.trim())}`)
+      .then(r => r.json())
+      .then(data => {
+        setSearchResults(data);
+        setSearchLoading(false);
+      })
+      .catch(() => {
+        setSearchResults({ devices: [], projects: [], users: [], departments: [] });
+        setSearchLoading(false);
+      });
+  }, []);
+
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchQuery(value);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (!value.trim()) {
+      setSearchResults({ devices: [], projects: [], users: [], departments: [] });
+      setSearchOpen(false);
+      return;
+    }
+    setSearchOpen(true);
+    searchTimerRef.current = setTimeout(() => {
+      performSearch(value);
+    }, 300);
+  }, [performSearch]);
 
   // Fetch notifications when user is logged in
   useEffect(() => {
@@ -150,6 +210,154 @@ export default function HomePage() {
               <p className="text-xs text-emerald-100/80 hidden sm:block">统一管理项目、用户、单位信息与终端设备采集数据</p>
             </div>
           </div>
+          {/* Global Search - hidden on mobile */}
+          <div className="hidden sm:flex items-center flex-1 justify-center max-w-md mx-4">
+            <Popover open={searchOpen && searchQuery.trim().length > 0} onOpenChange={(open) => { setSearchOpen(open); if (!open) { setSearchQuery(''); setSearchResults({ devices: [], projects: [], users: [], departments: [] }); } }}>
+              <PopoverTrigger asChild>
+                <div className="relative w-[240px] lg:w-[320px]">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-200/70" />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    onFocus={() => { if (searchQuery.trim()) setSearchOpen(true); }}
+                    onKeyDown={(e) => { if (e.key === 'Escape') { setSearchQuery(''); setSearchOpen(false); setSearchResults({ devices: [], projects: [], users: [], departments: [] }); searchInputRef.current?.blur(); } }}
+                    placeholder="搜索设备、项目、用户... (⌘K)"
+                    className="w-full h-8 pl-8 pr-3 rounded-lg bg-white/10 border border-white/10 text-sm text-white placeholder:text-emerald-200/50 focus:outline-none focus:ring-1 focus:ring-white/30 focus:bg-white/15 transition-all"
+                  />
+                  {searchLoading && (
+                    <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-200/70 animate-spin" />
+                  )}
+                </div>
+              </PopoverTrigger>
+              <PopoverContent align="center" className="w-[320px] lg:w-[400px] p-0" sideOffset={8}>
+                <ScrollArea className="max-h-[400px]">
+                  {searchResults.devices.length === 0 && searchResults.projects.length === 0 && searchResults.users.length === 0 && searchResults.departments.length === 0 && !searchLoading && (
+                    <div className="py-8 text-center text-muted-foreground text-sm">
+                      <Search className="w-6 h-6 mx-auto mb-2 opacity-30" />
+                      无搜索结果
+                    </div>
+                  )}
+                  {searchResults.devices.length > 0 && (
+                    <div>
+                      <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <Monitor className="w-3 h-3 text-emerald-600" />
+                        设备
+                        <Badge variant="secondary" className="text-[10px] bg-emerald-100 text-emerald-700 px-1 py-0 ml-auto">{searchResults.devices.length}</Badge>
+                      </div>
+                      {searchResults.devices.map((d) => (
+                        <button
+                          key={`device-${d.id}`}
+                          className="w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors flex items-center gap-2.5"
+                          onClick={() => { setActiveTab('devices'); setSearchOpen(false); setSearchQuery(''); setSearchResults({ devices: [], projects: [], users: [], departments: [] }); }}
+                        >
+                          <div className="w-7 h-7 rounded-md bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
+                            <Monitor className="w-3.5 h-3.5 text-emerald-600" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-medium truncate">{d.userName}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">
+                              {d.ipAddress && <span className="font-mono">{d.ipAddress}</span>}
+                              {d.ipAddress && d.computerName && ' · '}
+                              {d.computerName}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {searchResults.projects.length > 0 && (
+                    <div>
+                      <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 border-t">
+                        <FolderKanban className="w-3 h-3 text-teal-600" />
+                        项目
+                        <Badge variant="secondary" className="text-[10px] bg-teal-100 text-teal-700 px-1 py-0 ml-auto">{searchResults.projects.length}</Badge>
+                      </div>
+                      {searchResults.projects.map((p) => (
+                        <button
+                          key={`project-${p.id}`}
+                          className="w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors flex items-center gap-2.5"
+                          onClick={() => { setActiveTab('projects'); setSearchOpen(false); setSearchQuery(''); setSearchResults({ devices: [], projects: [], users: [], departments: [] }); }}
+                        >
+                          <div className="w-7 h-7 rounded-md bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center shrink-0">
+                            <FolderKanban className="w-3.5 h-3.5 text-teal-600" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-medium truncate">{p.name}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">
+                              {p.code && <span>{p.code}</span>}
+                              {p.code && p.description && ' · '}
+                              {p.description && <span>{p.description.slice(0, 30)}</span>}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {searchResults.users.length > 0 && (
+                    <div>
+                      <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 border-t">
+                        <Users className="w-3 h-3 text-cyan-600" />
+                        用户
+                        <Badge variant="secondary" className="text-[10px] bg-cyan-100 text-cyan-700 px-1 py-0 ml-auto">{searchResults.users.length}</Badge>
+                      </div>
+                      {searchResults.users.map((u) => (
+                        <button
+                          key={`user-${u.id}`}
+                          className="w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors flex items-center gap-2.5"
+                          onClick={() => { setActiveTab('users'); setSearchOpen(false); setSearchQuery(''); setSearchResults({ devices: [], projects: [], users: [], departments: [] }); }}
+                        >
+                          <div className="w-7 h-7 rounded-md bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center shrink-0">
+                            <Users className="w-3.5 h-3.5 text-cyan-600" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-medium truncate">{u.displayName || u.username}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">
+                              <span>@{u.username}</span>
+                              {u.projectName && <span> · {u.projectName}</span>}
+                            </p>
+                          </div>
+                          <Badge variant="secondary" className={`text-[10px] px-1 py-0 ${u.role === 'admin' ? 'bg-red-100 text-red-700' : 'bg-cyan-100 text-cyan-700'}`}>
+                            {u.role === 'admin' ? '管理员' : '用户'}
+                          </Badge>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {searchResults.departments.length > 0 && (
+                    <div>
+                      <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 border-t">
+                        <Building2 className="w-3 h-3 text-amber-600" />
+                        单位
+                        <Badge variant="secondary" className="text-[10px] bg-amber-100 text-amber-700 px-1 py-0 ml-auto">{searchResults.departments.length}</Badge>
+                      </div>
+                      {searchResults.departments.map((d) => (
+                        <button
+                          key={`dept-${d.id}`}
+                          className="w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors flex items-center gap-2.5"
+                          onClick={() => { setActiveTab('departments'); setSearchOpen(false); setSearchQuery(''); setSearchResults({ devices: [], projects: [], users: [], departments: [] }); }}
+                        >
+                          <div className="w-7 h-7 rounded-md bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
+                            <Building2 className="w-3.5 h-3.5 text-amber-600" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-medium truncate">{d.name}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">
+                              {d.code && <span>{d.code}</span>}
+                              {d.code && d.projectName && ' · '}
+                              {d.projectName && <span>{d.projectName}</span>}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </PopoverContent>
+            </Popover>
+          </div>
+
           <div className="flex items-center gap-2">
             {/* Mobile hamburger menu */}
             {isMobile && (
