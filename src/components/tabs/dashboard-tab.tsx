@@ -20,6 +20,13 @@ interface SystemInfoData {
   systemInfo: { version: string; nodeEnv: string; dbType: string; uptime: number; memoryUsage: number };
 }
 
+// ===== Device Analytics Types =====
+interface DeviceAnalytics {
+  osData: { name: string; value: number }[];
+  timeline: { date: string; count: number }[];
+  totalDevices: number;
+}
+
 function formatUptime(seconds: number): string {
   const days = Math.floor(seconds / 86400);
   const hours = Math.floor((seconds % 86400) / 3600);
@@ -98,6 +105,26 @@ function DashboardSkeleton() {
         </CardContent>
       </Card>
 
+      {/* Analytics Row Skeleton */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-2">
+            <Skeleton className="h-5 w-28" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-[260px] w-full rounded" />
+          </CardContent>
+        </Card>
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-2">
+            <Skeleton className="h-5 w-28" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-[260px] w-full rounded" />
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Bottom Section Skeleton */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <Card className="lg:col-span-2 border-0 shadow-sm">
@@ -137,8 +164,8 @@ function DashboardSkeleton() {
 function BarChartTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number; name: string }>; label?: string }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-white/95 backdrop-blur-sm border border-slate-200 rounded-lg shadow-lg px-3 py-2">
-      <p className="text-xs font-medium text-slate-600 mb-1">{label}</p>
+    <div className="bg-white/95 backdrop-blur-sm border border-slate-200 rounded-lg shadow-lg px-3 py-2 dark:bg-slate-800/95 dark:border-slate-700">
+      <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{label}</p>
       <p className="text-sm font-bold tabular-nums" style={{ color: CHART_COLORS[0] }}>
         {payload[0].value} 台设备
       </p>
@@ -150,12 +177,39 @@ function BarChartTooltip({ active, payload, label }: { active?: boolean; payload
 function AreaChartTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-white/95 backdrop-blur-sm border border-slate-200 rounded-lg shadow-lg px-3 py-2">
-      <p className="text-xs font-medium text-slate-600 mb-1">{label}</p>
+    <div className="bg-white/95 backdrop-blur-sm border border-slate-200 rounded-lg shadow-lg px-3 py-2 dark:bg-slate-800/95 dark:border-slate-700">
+      <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{label}</p>
       <p className="text-sm font-bold text-emerald-600 tabular-nums">
         {payload[0].value} 次采集
       </p>
     </div>
+  );
+}
+
+// ===== Custom Tooltip for Timeline Bar Chart =====
+function TimelineTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-white/95 backdrop-blur-sm border border-slate-200 rounded-lg shadow-lg px-3 py-2 dark:bg-slate-800/95 dark:border-slate-700">
+      <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{label}</p>
+      <p className="text-sm font-bold text-teal-600 tabular-nums">
+        {payload[0].value} 台设备
+      </p>
+    </div>
+  );
+}
+
+// ===== Custom Label for Donut Center =====
+function DonutCenterLabel({ cx, cy, total }: { cx: number; cy: number; total: number }) {
+  return (
+    <g>
+      <text x={cx} y={cy - 8} textAnchor="middle" dominantBaseline="central" className="fill-foreground text-2xl font-bold tabular-nums">
+        {total}
+      </text>
+      <text x={cx} y={cy + 14} textAnchor="middle" dominantBaseline="central" className="fill-muted-foreground text-xs">
+        设备总数
+      </text>
+    </g>
   );
 }
 
@@ -169,6 +223,11 @@ export function DashboardTab() {
   const { data: systemInfo } = useQuery<SystemInfoData>({
     queryKey: ['system-info'],
     queryFn: () => fetch('/api/system-info').then(r => r.json()),
+  });
+
+  const { data: analyticsData } = useQuery<DeviceAnalytics>({
+    queryKey: ['device-analytics'],
+    queryFn: () => fetch('/api/device-analytics').then(r => r.json()),
   });
 
   if (isLoading) return <DashboardSkeleton />;
@@ -191,6 +250,14 @@ export function DashboardTab() {
 
   // Trend chart data with date formatting
   const trendChartData = stats.trendData?.map((t) => {
+    const d = new Date(t.date);
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return { ...t, dateLabel: `${month}/${day}` };
+  });
+
+  // Timeline chart data with date formatting
+  const timelineChartData = analyticsData?.timeline.map((t) => {
     const d = new Date(t.date);
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
@@ -336,6 +403,87 @@ export function DashboardTab() {
           </CardContent>
         </Card>
       )}
+
+      {/* ===== Analytics Row (OS Distribution + Collection Timeline) ===== */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* OS Distribution Donut Chart */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Monitor className="w-4 h-4 text-emerald-600" />
+              操作系统分布
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {analyticsData && analyticsData.osData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={260}>
+                <RechartsPieChart>
+                  <Pie
+                    data={analyticsData.osData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={90}
+                    dataKey="value"
+                    paddingAngle={2}
+                  >
+                    {analyticsData.osData.map((_, index) => (
+                      <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                    <DonutCenterLabel cx="50%" cy="50%" total={analyticsData.totalDevices} />
+                  </Pie>
+                  <Tooltip
+                    formatter={(value: number, name: string) => [`${value} 台`, name]}
+                    contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                  />
+                  <Legend
+                    verticalAlign="bottom"
+                    height={36}
+                    formatter={(value: string) => (
+                      <span className="text-xs text-slate-600 dark:text-slate-400">{value}</span>
+                    )}
+                  />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-center text-muted-foreground py-8">暂无设备数据</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Collection Timeline Bar Chart */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Clock className="w-4 h-4 text-teal-600" />
+              采集时间分布
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {timelineChartData && timelineChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={260}>
+                <RechartsBarChart
+                  data={timelineChartData}
+                  layout="vertical"
+                  margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <YAxis type="category" dataKey="dateLabel" tick={{ fontSize: 11 }} width={45} />
+                  <Tooltip content={<TimelineTooltip />} />
+                  <Bar dataKey="count" name="设备数量" radius={[0, 6, 6, 0]} maxBarSize={28}>
+                    {timelineChartData.map((_, index) => (
+                      <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </RechartsBarChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-center text-muted-foreground py-8">近30天暂无采集记录</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {/* ===== Bottom Section: Project Cards + Recent Records ===== */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">

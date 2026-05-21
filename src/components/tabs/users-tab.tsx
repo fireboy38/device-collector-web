@@ -160,7 +160,7 @@ export function UsersTab() {
               </TableHeader>
               <TableBody>
                 {users?.map(u => (
-                  <TableRow key={u.id} className="hover:bg-slate-50 transition-colors">
+                  <TableRow key={u.id} className="table-row-hover">
                     <TableCell>{u.id}</TableCell>
                     <TableCell className="font-medium">{u.username}</TableCell>
                     <TableCell>{u.displayName || '-'}</TableCell>

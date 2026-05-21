@@ -521,3 +521,223 @@ Recommended next steps:
 - Add mobile-optimized navigation (sidebar or hamburger menu)
 - Add print-friendly report generation
 - Performance optimization for large datasets (virtualized tables)
+
+---
+Task ID: 2+3+7
+Agent: Feature Enhancement Agent
+Task: Data Backup/Restore API, Enhanced Dashboard Analytics, and System Settings Tab
+
+Work Log:
+- Read worklog.md to understand project context and prior work
+- Reviewed existing dashboard-tab.tsx, page.tsx, api-auth.ts, types.ts, seed route
+
+1. **Backup/Restore API** (`/src/app/api/backup/route.ts`):
+   - GET endpoint with requireAdmin auth, exports full database as JSON
+   - Exports all 6 tables: projects, users, departments, devices, logs, apiKeys
+   - Returns with Content-Disposition attachment header, UTF-8 encoded filename
+   - POST endpoint with requireAdmin auth, restores from backup JSON
+   - Clears existing data in reverse FK order before restoring
+   - Handles both camelCase and snake_case field names from backup
+   - Returns detailed result counts per entity type
+
+2. **Device Analytics API** (`/src/app/api/device-analytics/route.ts`):
+   - GET endpoint returning OS distribution and collection timeline
+   - OS parsing logic: Windows 10/11/7/其他, macOS, Linux, 麒麟OS, custom fallback
+   - Returns top 8 OS families sorted by count
+   - Collection timeline: last 30 days, grouped by date
+   - Returns totalDevices count for donut center label
+
+3. **Enhanced Dashboard** (`/src/components/tabs/dashboard-tab.tsx`):
+   - Added DeviceAnalytics interface and analyticsData query
+   - NEW: OS Distribution Donut Chart (PieChart with innerRadius=60, outerRadius=90)
+     - Center text showing total device count
+     - Top 8 OS families with CHART_COLORS
+     - Custom DonutCenterLabel component
+   - NEW: Collection Timeline Bar Chart (horizontal layout="vertical")
+     - Last 30 days collection counts
+     - Custom TimelineTooltip component
+     - Date formatted as MM/DD
+   - Added Analytics Row between Trend Chart and Bottom Section
+   - Added skeleton loading for analytics row
+   - Dark mode support for all new tooltips
+
+4. **Settings Tab** (`/src/components/tabs/settings-tab.tsx`):
+   - Data Backup card (green accent): download button, JSON format description
+   - Data Restore card (amber accent): drag-and-drop file upload zone
+     - Accepts .json files only
+     - FileReader parsing with error handling
+     - Backup preview showing version, export date, and record counts per entity
+     - Confirmation dialog via ConfirmDialog with warning variant
+     - POST to /api/backup on confirm, invalidates all queries after restore
+   - System Information card: 2x2 grid (version, DB type, memory, uptime)
+     - Data stats badges (project/user/dept/device/log/apiKey counts)
+   - Quick Actions card (red accent / danger zone):
+     - Seed database button (calls /api/seed)
+     - Clear logs button (calls DELETE /api/logs) with destructive confirmation
+   - About card: app version and tech stack badge
+   - All actions use toast notifications for feedback
+
+5. **Page.tsx Update**:
+   - Added SettingsTab import (was already present from prior session)
+   - Added Settings icon import to lucide-react imports
+   - Added 9th tab entry: { value: 'settings', icon: Settings, label: '系统设置' }
+   - Added TabsContent for settings tab
+
+Stage Summary:
+- Backup/restore API fully functional with admin auth
+- Device analytics API returns OS distribution and collection timeline
+- Dashboard enhanced with donut chart (OS distribution) and horizontal bar chart (collection timeline)
+- Settings tab created with backup, restore, system info, quick actions, and about sections
+- Page.tsx updated with 9th tab (Settings)
+- All lint checks passing with zero errors
+- Dev server running successfully, all new API endpoints returning 200
+Task ID: 8
+Agent: UI Polish Agent
+Task: Enhance UI polish across the entire application with micro-animations, better transitions, and improved visual details
+
+Work Log:
+- Read worklog.md to understand project context and previous work
+- Reviewed all relevant source files: globals.css, page.tsx, and all 8 tab components
+
+Enhancements made:
+
+1. **Enhanced Global CSS** (`globals.css`):
+   - Added 5 keyframe animations: fadeIn, slideIn, scaleIn, shimmer, float
+   - Added utility classes: animate-fade-in, animate-slide-in, animate-scale-in
+   - Added shimmer loading effect class
+   - Added stagger delay classes (stagger-1 through stagger-4) for list animations
+   - Added better focus-visible styles with emerald outline color
+   - Added .table-row-hover class with smooth transition and proper dark mode support
+   - Added .card-lift class for hover lift effect with shadow
+   - Added .btn-press:active for button press feedback
+   - Added smooth scrollbar behavior globally
+   - Added .badge-pulse animation for active/important items
+   - Added dark mode SVG/image transition
+   - Added print styles (hide header/footer, disable card hover effects)
+
+2. **Enhanced Main Page** (`page.tsx`):
+   - Added `animate-fade-in` class to all 8 TabsContent components for smooth tab transitions
+   - Added animated gradient border line below header (emerald-400 via-transparent gradient, 2px height)
+   - Enhanced footer with dynamic year display (`new Date().getFullYear()`)
+   - Added animated green dot (online status indicator) with `animate-pulse`
+
+3. **Enhanced Dashboard Tab** (`dashboard-tab.tsx`):
+   - Added AnimatedNumber component with ease-out cubic easing for count-up animation
+   - Added `card-lift` class to stat cards for hover lift effect
+   - Added `animate-fade-in` to main container div
+   - Added stagger animations to stat cards (stagger-1 through stagger-4 with initial opacity: 0)
+   - Replaced static number display with `<AnimatedNumber value={s.value} />` for animated count-up
+
+4. **Enhanced IP Map Tab** (`ipmap-tab.tsx`):
+   - Added `animate-scale-in` class to each IP grid cell
+   - Added staggered animation delay based on host number: `${(host % 32) * 10}ms`
+   - Added initial `opacity: 0` style so animation plays from invisible to visible
+
+5. **Table Row Hover Across All Tabs**:
+   - Replaced `hover:bg-slate-50 transition-colors` with `table-row-hover` class in:
+     - projects-tab.tsx
+     - users-tab.tsx
+     - departments-tab.tsx
+   - Added `table-row-hover` class to TableRow elements in:
+     - devices-tab.tsx (previously had no hover class)
+     - logs-tab.tsx (previously had no hover class)
+     - apikeys-tab.tsx (previously had no hover class)
+   - The table-row-hover class provides smooth background-color transition and proper dark mode support
+
+6. **Lint Check**: All changes pass `bun run lint` with zero errors
+7. **Dev Server**: Running successfully with no runtime errors (200 status on all routes)
+
+Stage Summary:
+- Comprehensive UI polish applied across the entire application
+- Micro-animations added for page transitions, card interactions, and list items
+- AnimatedNumber component provides engaging count-up animation on dashboard
+- IP Map grid cells animate in with staggered scale effect
+- Consistent table row hover styling across all 6 tab components with dark mode support
+- Animated gradient border adds visual polish below header
+- Footer enhanced with dynamic year and online status indicator
+- Print styles added for clean print output
+- All lint checks passing, dev server stable
+
+---
+Task ID: 8
+Agent: Main Agent (Current Session - Round 2)
+Task: Project status assessment, QA testing, new features, and UI polish
+
+Work Log:
+- Read worklog.md to understand previous progress across 7+ sessions
+- Used agent-browser for comprehensive QA testing of all 9 tabs
+- Tested: login/logout, all tab navigation, project creation, device search, detail dialogs, dark mode toggle, notification bell, XLSX export dropdown, batch import UI, backup download, settings tab
+- No critical bugs found - all features working correctly
+- Verified device-analytics API returns proper OS distribution data
+- Verified backup API returns 200 with full data export
+- Dark mode toggle works correctly
+- All lint checks passing with zero errors
+
+New features and enhancements completed this session:
+
+1. **Data Backup/Restore System**:
+   - `/api/backup` GET endpoint: exports all 6 DB tables as JSON with admin auth
+   - `/api/backup` POST endpoint: restores from backup JSON with confirmation
+   - Handles both camelCase and snake_case field names
+   - Clear existing data before restore in proper FK order
+
+2. **Device Analytics Dashboard**:
+   - `/api/device-analytics` endpoint: OS distribution + collection timeline
+   - OS Distribution Donut Chart (innerRadius=60, outerRadius=90)
+   - Collection Timeline horizontal Bar Chart (30-day view)
+   - Proper skeleton loading states
+
+3. **System Settings Tab** (9th tab):
+   - Data Backup card with one-click download
+   - Data Restore card with drag-and-drop file upload
+   - Backup preview with version/date/counts before restore
+   - System Information card (version, DB, memory, uptime)
+   - Quick Actions danger zone (seed DB, clear logs)
+   - About card with tech stack
+
+4. **Comprehensive UI Polish**:
+   - 5 CSS keyframe animations (fadeIn, slideIn, scaleIn, shimmer, float)
+   - AnimatedNumber component with cubic ease-out count-up
+   - Card hover lift effect (.card-lift)
+   - Table row hover with dark mode support (.table-row-hover)
+   - IP Map grid stagger animation on load
+   - Animated gradient border below header
+   - Button press effect (.btn-press)
+   - Staggered animation for stat cards
+   - Print styles for clean output
+   - Focus-visible outline styling
+
+Stage Summary:
+- Application now has 9 fully functional tabs
+- Backup/restore system fully operational
+- Dashboard enriched with OS distribution and timeline analytics
+- Settings tab provides admin tools in one place
+- UI significantly polished with micro-animations and transitions
+- All QA tests passing, no bugs found
+- All lint checks passing with zero errors
+- Dev server stable
+
+Current Project Status:
+- **Production-ready and feature-rich** - 9 tabs, full CRUD, batch import/export, backup/restore, analytics
+- **Excellent UI/UX** - animations, dark mode, responsive design, print support
+- **Well-architected** - modular component structure, auth middleware, type-safe APIs
+- **Stable** - no errors, all features tested and working
+
+Unresolved issues / risks:
+- Mobile tab navigation with 9 tabs is cramped - needs hamburger menu or scrollable tabs
+- No WebSocket real-time updates for device submissions
+- Department model lacks unique constraint on (projectId, name)
+- Could add user session management (view active sessions, force logout)
+- Could add print-friendly report generation with proper layout
+- Could add data visualization for device hardware (CPU/RAM distribution)
+- Could add customizable dashboard (drag-and-drop widget layout)
+
+Recommended next steps:
+- Add mobile-optimized navigation (hamburger menu / sidebar)
+- Add WebSocket for real-time device submission notifications
+- Add user session management
+- Add printable report generation
+- Add hardware analytics charts (CPU/RAM/Disk distribution)
+- Add customizable dashboard layout
+- Performance optimization for large datasets (virtualized tables, pagination)
+- Add more export formats (PDF report generation)

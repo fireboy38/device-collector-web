@@ -104,7 +104,7 @@ export function LogsTab() {
               </TableHeader>
               <TableBody>
                 {data?.items?.map((l: LogEntry) => (
-                  <TableRow key={l.id}>
+                  <TableRow key={l.id} className="table-row-hover">
                     <TableCell>{l.id}</TableCell>
                     <TableCell>
                       <Badge className={LOG_TYPE_COLORS[l.logType] || 'bg-slate-50 text-slate-700 border-slate-200'} variant="outline">

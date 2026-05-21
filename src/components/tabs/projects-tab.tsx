@@ -125,7 +125,7 @@ export function ProjectsTab() {
               </TableHeader>
               <TableBody>
                 {projects?.map(p => (
-                  <TableRow key={p.id} className="hover:bg-slate-50 transition-colors">
+                  <TableRow key={p.id} className="table-row-hover">
                     <TableCell>{p.id}</TableCell>
                     <TableCell className="font-medium">{p.name}</TableCell>
                     <TableCell>

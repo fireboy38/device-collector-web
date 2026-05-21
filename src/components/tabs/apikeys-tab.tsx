@@ -131,7 +131,7 @@ export function ApiKeysTab() {
               </TableHeader>
               <TableBody>
                 {keys?.map(k => (
-                  <TableRow key={k.id}>
+                  <TableRow key={k.id} className="table-row-hover">
                     <TableCell>{k.id}</TableCell>
                     <TableCell className="font-medium">{k.name}</TableCell>
                     <TableCell>

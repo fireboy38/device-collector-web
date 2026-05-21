@@ -111,7 +111,8 @@ export function IpMapTab() {
                   return (
                     <div
                       key={host}
-                      className={`aspect-square rounded-sm flex items-center justify-center text-[8px] sm:text-[10px] cursor-pointer transition-all duration-150 hover:scale-125 hover:z-10 hover:shadow-md ${device ? `${getUsedColor(host)} text-white` : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
+                      className={`aspect-square rounded-sm flex items-center justify-center text-[8px] sm:text-[10px] cursor-pointer transition-all duration-150 hover:scale-125 hover:z-10 hover:shadow-md animate-scale-in ${device ? `${getUsedColor(host)} text-white` : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
+                      style={{ animationDelay: `${(host % 32) * 10}ms`, opacity: 0 }}
                       onMouseEnter={(e) => {
                         const rect = e.currentTarget.getBoundingClientRect();
                         const x = rect.right + window.scrollX + 8;

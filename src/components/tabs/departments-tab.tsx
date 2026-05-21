@@ -206,7 +206,7 @@ export function DepartmentsTab() {
               </TableHeader>
               <TableBody>
                 {departments?.map(d => (
-                  <TableRow key={d.id} className="hover:bg-slate-50 transition-colors">
+                  <TableRow key={d.id} className="table-row-hover">
                     <TableCell>{d.id}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="text-[10px]">{d.projectName || '-'}</Badge>

@@ -240,7 +240,7 @@ export function DevicesTab() {
               </TableRow></TableHeader>
               <TableBody>
                 {devices?.map(d => (
-                  <TableRow key={d.id}>
+                  <TableRow key={d.id} className="table-row-hover">
                     <TableCell>{d.id}</TableCell>
                     <TableCell><Badge variant="outline" className="text-[10px]">{d.projectName || '-'}</Badge></TableCell>
                     <TableCell className="text-sm">{d.departmentName || '-'}</TableCell>

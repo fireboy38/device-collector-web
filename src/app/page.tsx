@@ -12,6 +12,7 @@ import { DevicesTab } from '@/components/tabs/devices-tab';
 import { IpMapTab } from '@/components/tabs/ipmap-tab';
 import { LogsTab } from '@/components/tabs/logs-tab';
 import { ApiKeysTab } from '@/components/tabs/apikeys-tab';
+import { SettingsTab } from '@/components/tabs/settings-tab';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,7 +26,7 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import {
   LayoutDashboard, FolderKanban, Users, Building2, Monitor, Globe, FileText, KeyRound,
-  LogOut, Loader2, Sun, Moon, ChevronDown, Bell, Zap,
+  LogOut, Loader2, Sun, Moon, ChevronDown, Bell, Zap, Settings,
 } from 'lucide-react';
 
 // ===== Helpers =====
@@ -118,6 +119,7 @@ export default function HomePage() {
     { value: 'ipmap', icon: Globe, label: 'IP 分布' },
     { value: 'logs', icon: FileText, label: '操作日志' },
     { value: 'apikeys', icon: KeyRound, label: 'API 管理' },
+    { value: 'settings', icon: Settings, label: '系统设置' },
   ];
 
   return (
@@ -247,6 +249,9 @@ export default function HomePage() {
         </div>
       </header>
 
+      {/* Animated gradient border */}
+      <div className="h-[2px] bg-gradient-to-r from-transparent via-emerald-400 to-transparent opacity-60" />
+
       {/* Tab Navigation */}
       <div className="bg-card border-b shadow-sm">
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6">
@@ -264,14 +269,15 @@ export default function HomePage() {
               ))}
             </TabsList>
 
-            <TabsContent value="dashboard" className="mt-6"><DashboardTab /></TabsContent>
-            <TabsContent value="projects" className="mt-6"><ProjectsTab /></TabsContent>
-            <TabsContent value="users" className="mt-6"><UsersTab /></TabsContent>
-            <TabsContent value="departments" className="mt-6"><DepartmentsTab /></TabsContent>
-            <TabsContent value="devices" className="mt-6"><DevicesTab /></TabsContent>
-            <TabsContent value="ipmap" className="mt-6"><IpMapTab /></TabsContent>
-            <TabsContent value="logs" className="mt-6"><LogsTab /></TabsContent>
-            <TabsContent value="apikeys" className="mt-6"><ApiKeysTab /></TabsContent>
+            <TabsContent value="dashboard" className="mt-6 animate-fade-in"><DashboardTab /></TabsContent>
+            <TabsContent value="projects" className="mt-6 animate-fade-in"><ProjectsTab /></TabsContent>
+            <TabsContent value="users" className="mt-6 animate-fade-in"><UsersTab /></TabsContent>
+            <TabsContent value="departments" className="mt-6 animate-fade-in"><DepartmentsTab /></TabsContent>
+            <TabsContent value="devices" className="mt-6 animate-fade-in"><DevicesTab /></TabsContent>
+            <TabsContent value="ipmap" className="mt-6 animate-fade-in"><IpMapTab /></TabsContent>
+            <TabsContent value="logs" className="mt-6 animate-fade-in"><LogsTab /></TabsContent>
+            <TabsContent value="apikeys" className="mt-6 animate-fade-in"><ApiKeysTab /></TabsContent>
+            <TabsContent value="settings" className="mt-6 animate-fade-in"><SettingsTab /></TabsContent>
           </Tabs>
         </div>
       </div>
@@ -279,8 +285,9 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="mt-auto border-t bg-card py-3 text-center text-xs text-muted-foreground">
         <div className="flex items-center justify-center gap-1.5">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
           <Zap className="w-3 h-3 text-emerald-500" />
-          <span>设备信息采集器 · 管理端 v2.0 · Powered by Next.js</span>
+          <span>设备信息采集器 · 管理端 v2.0 · {new Date().getFullYear()} · Powered by Next.js</span>
         </div>
       </footer>
 
