@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  device-collector:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: device-collector
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=file:./data/device-collector.db
+      - NEXTAUTH_SECRET=change-me-to-a-random-secret-in-production
+      - NEXTAUTH_URL=http://localhost:3000
+    volumes:
+      - device-collector-data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  device-collector-data:
+    driver: local
